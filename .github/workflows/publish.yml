@@ -52,7 +52,7 @@ jobs:
 
       # Tag pushes stage on npm; approval is completed manually in npm.
       - name: Setup Node for npmjs.com
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           registry-url: 'https://registry.npmjs.org'
@@ -79,7 +79,7 @@ jobs:
       # Manual dispatch runs after npm approval and publishes to GitHub Packages.
       - name: Setup Node for GitHub Packages
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           registry-url: 'https://npm.pkg.github.com'
