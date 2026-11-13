@@ -20,7 +20,9 @@
     "paths": {
       "@types": ["./src/types/index.ts"],
       "@libs": ["./src/libs/index.ts"],
-      "@utils": ["./src/utils/index.ts"]
+      "@utils": ["./src/utils/index.ts"],
+      "@middleware": ["./src/middleware/index.ts"],
+      "@storage": ["./src/storage/index.ts"]
     }
   },
   "module": {

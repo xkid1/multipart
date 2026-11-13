@@ -1,9 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
 import type { NestMiddleware } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
+import type { MiddlewareOptions } from '@types';
 import { parseMultipartWithDuplicates } from '../core/parse-multipart';
-import type { MiddlewareError, MiddlewareOptions } from '../core/types';
 
 /**
  * NestJS multipart middleware for handling file uploads
@@ -20,13 +20,13 @@ import type { MiddlewareError, MiddlewareOptions } from '../core/types';
  * export class UploadModule implements NestModule {
  *   configure(consumer: MiddlewareConsumer) {
  *     consumer
- *       .apply(new MultipartMiddleware())
+ *       .apply(new MultipartNestjs())
  *       .forRoutes('/upload');
  *   }
  * }
  * ```
  */
-export class MultipartMiddleware implements NestMiddleware {
+export class MultipartNestjs implements NestMiddleware {
   constructor(private readonly options: MiddlewareOptions = {}) {}
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {

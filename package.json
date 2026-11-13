@@ -32,6 +32,31 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./middleware/express": {
+      "types": "./dist/middleware/express/index.d.ts",
+      "import": "./dist/middleware/express/index.js",
+      "default": "./dist/middleware/express/index.js"
+    },
+    "./middleware/nestjs": {
+      "types": "./dist/middleware/nestjs/index.d.ts",
+      "import": "./dist/middleware/nestjs/index.js",
+      "default": "./dist/middleware/nestjs/index.js"
+    },
+    "./storage/local": {
+      "types": "./dist/storage/local/index.d.ts",
+      "import": "./dist/storage/local/index.js",
+      "default": "./dist/storage/local/index.js"
+    },
+    "./storage/s3": {
+      "types": "./dist/storage/s3/index.d.ts",
+      "import": "./dist/storage/s3/index.js",
+      "default": "./dist/storage/s3/index.js"
+    },
+    "./storage/azure": {
+      "types": "./dist/storage/azure/index.d.ts",
+      "import": "./dist/storage/azure/index.js",
+      "default": "./dist/storage/azure/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -43,23 +68,12 @@
     "node": ">=26.13.0"
   },
   "packageManager": "yarn@4.18.0",
-  "devEngines": {
-    "packageManager": [
-      {
-        "name": "npm"
-      },
-      {
-        "name": "yarn",
-        "version": ">=4.0.0"
-      }
-    ]
-  },
   "publishConfig": {
     "access": "public",
     "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
-    "build": "yarn clean && yarn build:js && yarn build:types && yarn build:assets",
+    "build": "yarn clean && yarn build:js && yarn build:types",
     "build:js": "swc src -d dist --strip-leading-paths --ignore \"**/*.test.ts\" \"**/*.spec.ts\"",
     "build:types": "tsc -p tsconfig.build.json",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",

@@ -10,12 +10,30 @@
     "outDir": "./dist",
     "incremental": false,
     "baseUrl": "./",
+    "skipLibCheck": true,
     "paths": {
       "@types": ["./src/types/index.ts"],
       "@libs": ["./src/libs/index.ts"],
-      "@utils": ["./src/utils/index.ts"]
+      "@utils": ["./src/utils/index.ts"],
+      "@middleware": ["./src/middleware/index.ts"],
+      "@storage": ["./src/storage/index.ts"],
+      "@storage/local": ["./src/storage/local/index.ts"],
+      "@storage/s3": ["./src/storage/s3/index.ts"],
+      "@storage/azure": ["./src/storage/azure/index.ts"],
+      "@storage/types": ["./src/storage/types/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts", "node_modules", "dist", "build", "coverage"]
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/middleware/express",
+    "src/middleware/nestjs",
+    "src/middleware/storage.ts",
+    "src/storage/s3",
+    "src/storage/azure",
+    "node_modules",
+    "dist",
+    "build",
+    "coverage"
+  ]
 }
