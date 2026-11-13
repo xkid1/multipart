@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
+import type { MiddlewareError, MiddlewareOptions } from '@types';
 import { parseMultipartWithDuplicates } from '../core/parse-multipart';
-import type { MiddlewareError, MiddlewareOptions } from '../core/types';
 
 /**
  * Express multipart middleware factory
@@ -12,19 +12,19 @@ import type { MiddlewareError, MiddlewareOptions } from '../core/types';
  * @example
  * ```typescript
  * import express from 'express';
- * import { multipartMiddleware } from '@xkid1/multipart/middleware/express';
+ * import { multipartExpress } from '@xkid1/multipart/middleware/express';
  *
  * const app = express();
  *
  * // Basic usage
- * app.post('/upload', multipartMiddleware(), (req, res) => {
+ * app.post('/upload', multipartExpress(), (req, res) => {
  *   console.log(req.files);  // File data
  *   console.log(req.fields); // Text fields
  *   res.json({ success: true });
  * });
  *
  * // With options
- * app.post('/upload', multipartMiddleware({
+ * app.post('/upload', multipartExpress({
  *   maxSize: 500 * 1024 * 1024,    // 500MB
  *   maxFiles: 10,
  *   allowedMimeTypes: ['image/jpeg', 'image/png'],
@@ -37,7 +37,7 @@ import type { MiddlewareError, MiddlewareOptions } from '../core/types';
  * });
  * ```
  */
-export const multipartMiddleware = (options: MiddlewareOptions = {}) => {
+export const multipartExpress = (options: MiddlewareOptions = {}) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // Only process multipart/form-data requests
     const contentType = req.headers['content-type'];
@@ -166,7 +166,7 @@ export const multipartMiddleware = (options: MiddlewareOptions = {}) => {
  * });
  * ```
  */
-export const multipartErrorHandler = (
+const multipartErrorHandler = (
   err: any,
   req: Request,
   res: Response,
@@ -183,7 +183,7 @@ export const multipartErrorHandler = (
 /**
  * Utility: Check if field contains files
  */
-export const hasFiles = (req: Request, fieldName?: string): boolean => {
+const hasFiles = (req: Request, fieldName?: string): boolean => {
   const files = (req as any).files;
   if (!files) return false;
   if (!fieldName) return Object.keys(files).length > 0;
@@ -193,7 +193,7 @@ export const hasFiles = (req: Request, fieldName?: string): boolean => {
 /**
  * Utility: Get file(s) from field
  */
-export const getFile = (req: Request, fieldName: string) => {
+const getFile = (req: Request, fieldName: string) => {
   const files = (req as any).files;
   if (!files || !(fieldName in files)) return null;
   return files[fieldName];
@@ -202,7 +202,7 @@ export const getFile = (req: Request, fieldName: string) => {
 /**
  * Utility: Get field value
  */
-export const getField = (req: Request, fieldName: string) => {
+const getField = (req: Request, fieldName: string) => {
   const fields = (req as any).fields;
   if (!fields || !(fieldName in fields)) return null;
   return fields[fieldName];

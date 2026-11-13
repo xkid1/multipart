@@ -32,25 +32,50 @@
 // Main parser function
 export { default as multipart } from '@libs';
 
-// Types
-export type { FileData } from '@types';
+// Middleware exports
+export { multipartExpress, parseMultipartWithDuplicates } from '@middleware';
+
+// Local storage exports (no external dependencies required)
+export {
+  deleteFromLocal,
+  getLocalFileUrl,
+  uploadMultipleToLocal,
+  uploadToLocal,
+} from './storage/local';
 
 // Utilities (advanced usage)
 export {
   encoding,
-  MultiPartError,
-  Logger,
-  type LogLevel,
-  findNextBoundary,
-  extractPart,
-  shouldSkipPart,
-  splitPartSections,
-  parseHeaders,
-  extractName,
+  extractExtension,
   extractFilename,
   extractMimeType,
-  extractExtension,
+  extractName,
+  extractPart,
+  findNextBoundary,
+  Logger,
+  MultiPartError,
+  parseHeaders,
+  shouldSkipPart,
+  splitPartSections,
+  type LogLevel,
 } from '@utils';
 
-// Middleware exports
-export * from './middleware/index';
+// Storage types and handlers and utilities
+export type {
+  AzureBlobStorageOptions,
+  AzureBlobUploadConfig,
+  AzureBlobUploadResponse,
+  FileData,
+  LocalStorageConfig,
+  LocalStorageOptions,
+  LocalStorageUploadResponse,
+  MiddlewareContext,
+  MiddlewareError,
+  MiddlewareOptions,
+  ParsedFormData,
+  S3StorageOptions,
+  S3UploadConfig,
+  S3UploadResponse,
+  StorageUploadError,
+  StorageUploadResponse,
+} from '@types';

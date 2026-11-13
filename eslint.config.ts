@@ -126,12 +126,33 @@ export default defineConfig(
         'error',
         {
           zones: [
-            // 1. Utils and Libs must remain pure and cannot import from higher layers
+            // 1. Types can only import from other types (types and file-data)
+            {
+              target: './src/types/**/*',
+              from: './src/{libs,utils,middleware,storage,config,connection,database,services,controllers,routes,apps}/**/*',
+              message:
+                'Architecture Violation: Types cannot depend on any runtime code or infrastructure layers.',
+            },
+            // 2. Utils and Libs must remain pure and cannot import from higher layers
             {
               target: './src/{utils,libs}/**/*',
               from: './src/{config,connection,database,services,controllers,routes,apps}/**/*',
               message:
                 'Architecture Violation: Utils and Libs cannot depend on infrastructure, business logic, or application layers.',
+            },
+            // 3. Middleware can import types and storage but not higher layers
+            {
+              target: './src/middleware/**/*',
+              from: './src/{config,connection,database,services,controllers,routes,apps}/**/*',
+              message:
+                'Architecture Violation: Middleware cannot depend on infrastructure, business logic, or application layers.',
+            },
+            // 4. Storage can import types and utils but not middleware or higher layers
+            {
+              target: './src/storage/**/*',
+              from: './src/{middleware,config,connection,database,services,controllers,routes,apps}/**/*',
+              message:
+                'Architecture Violation: Storage cannot depend on middleware, infrastructure, business logic, or application layers.',
             },
           ],
         },

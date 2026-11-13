@@ -11,8 +11,7 @@ import {
   splitPartSections,
 } from '@utils';
 
-import type { MiddlewareOptions, ParsedFormData } from './types';
-import type { FileData } from '@types';
+import type { FileData, MiddlewareOptions, ParsedFormData } from '@types';
 
 /**
  * Enhanced multipart parser that supports multiple files/fields per key
