@@ -631,6 +631,10 @@ TESTEOF
 
 echo -e "${GREEN}✓ Created test script${NC}"
 
+# Create empty yarn.lock to mark this as a standalone project
+touch "${TEST_DIR}/yarn.lock"
+echo -e "${GREEN}✓ Created yarn.lock (standalone project marker)${NC}"
+
 # Step 3: Install dependencies
 echo -e "\n${YELLOW}=== Step 3: Installing Dependencies ===${NC}"
 
