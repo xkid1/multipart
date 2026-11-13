@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "incremental": false,
+    "baseUrl": "./",
+    "paths": {
+      "@types": ["./src/types/index.ts"],
+      "@libs": ["./src/libs/index.ts"],
+      "@utils": ["./src/utils/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "node_modules", "dist", "build", "coverage"]
+}
