@@ -8,13 +8,13 @@ Zero-dependency, RFC-compliant multipart form-data parser for Node.js written in
 
 ## Features
 
-✅ **Zero Runtime Dependencies** - Core library has no external dependencies  
-✅ **RFC 2046/2388 Compliant** - Strict RFC compliance for multipart boundaries and headers  
-✅ **TypeScript Native** - 100% TypeScript with strict typing (no `any`)  
-✅ **Memory Safe** - Uses `Buffer.subarray()` for zero-copy operations  
-✅ **Encoding Detection** - Auto-detects UTF-8, UTF-16, UTF-32, Latin-1, binary  
-✅ **Framework Agnostic** - Core parser works with any Node.js framework  
-✅ **Cloud Storage Ready** - Built-in support for S3, Azure Blob Storage, local filesystem  
+✅ **Zero Runtime Dependencies** - Core library has no external dependencies
+✅ **RFC 2046/2388 Compliant** - Strict RFC compliance for multipart boundaries and headers
+✅ **TypeScript Native** - 100% TypeScript with strict typing (no `any`)
+✅ **Memory Safe** - Uses `Buffer.subarray()` for zero-copy operations
+✅ **Encoding Detection** - Auto-detects UTF-8, UTF-16, UTF-32, Latin-1, binary
+✅ **Framework Agnostic** - Core parser works with any Node.js framework
+✅ **Cloud Storage Ready** - Built-in support for S3, Azure Blob Storage, local filesystem
 ✅ **Express & NestJS** - Ready-to-use middleware for popular frameworks
 
 ## Installation
@@ -85,7 +85,7 @@ const app = express();
 app.post('/upload', multipartExpress(), (req, res) => {
   const files = req.files;   // { fieldName: { filename, buffer, mimeType } }
   const fields = req.fields;  // { name: 'value', ... }
-  
+
   res.json({ files, fields });
 });
 
@@ -108,7 +108,7 @@ import { MultipartService } from '@xkid1/multipart/middleware/nestjs';
 @Injectable()
 export class UploadService {
   constructor(private multipartService: MultipartService) {}
-  
+
   async handleUpload(buffer: Buffer, boundary: string) {
     return this.multipartService.parse(buffer, boundary);
   }
@@ -137,13 +137,13 @@ const s3Config = {
 
 app.post('/upload', multipartExpress(), async (req, res) => {
   const file = req.files?.file;
-  
+
   // Upload to S3
   const result = await uploadToS3(file, s3Config);
-  
+
   // Generate presigned URL (valid for 1 hour)
   const presigned = await getS3PresignedUrl(result.key, s3Config, 3600);
-  
+
   res.json({
     key: result.key,
     url: result.url,
@@ -173,13 +173,13 @@ const azureConfig = {
 
 app.post('/upload', multipartExpress(), async (req, res) => {
   const file = req.files?.file;
-  
+
   // Upload to Azure Blob Storage
   const result = await uploadToAzureBlob(file, azureConfig);
-  
+
   // Generate SAS URL (valid for 1 hour)
   const sasUrl = await getAzureSasUrl(result.blobName, azureConfig, 3600);
-  
+
   res.json({
     blobName: result.blobName,
     url: result.url,
@@ -225,9 +225,9 @@ interface MultipartExpressOptions {
   charset?: 'utf8' | 'binary'; // Default: 'utf8'
 }
 
-app.post('/upload', multipartExpress({ 
+app.post('/upload', multipartExpress({
   maxSize: 500 * 1024 * 1024,  // 500MB
-  maxFiles: 5 
+  maxFiles: 5
 }), (req, res) => {
   // ...
 });
@@ -399,12 +399,12 @@ import { uploadToLocal } from '@xkid1/multipart/storage/local';
 
 app.post('/upload', multipartExpress(), async (req, res) => {
   const file = req.files?.file;
-  
+
   const result = await uploadToLocal(file, '/var/uploads', {
     prefix: 'user-files/',
     permissions: 0o644
   });
-  
+
   res.json({
     path: result.path,
     absolutePath: result.absolutePath,
@@ -441,7 +441,7 @@ const s3Client = new S3Client({ region: 'us-east-1' });
 
 app.post('/upload', multipartExpress(), async (req, res) => {
   const file = req.files?.file;
-  
+
   // Upload to S3
   const result = await uploadToS3(file, s3Client, {
     bucket: 'my-bucket',
@@ -449,7 +449,7 @@ app.post('/upload', multipartExpress(), async (req, res) => {
     prefix: 'uploads/',
     acl: 'private'
   });
-  
+
   // Generate presigned URL (1 hour expiration)
   const presignedUrl = await getS3PresignedUrl(
     result.key,
@@ -457,7 +457,7 @@ app.post('/upload', multipartExpress(), async (req, res) => {
     { bucket: 'my-bucket', region: 'us-east-1' },
     3600
   );
-  
+
   res.json({
     key: result.key,
     url: result.url,
@@ -510,7 +510,7 @@ const containerClient = blobServiceClient.getContainerClient('uploads');
 
 app.post('/upload', multipartExpress(), async (req, res) => {
   const file = req.files?.file;
-  
+
   // Upload to Azure Blob Storage
   const result = await uploadToAzureBlob(file, containerClient, {
     accountName: 'myaccount',
@@ -518,7 +518,7 @@ app.post('/upload', multipartExpress(), async (req, res) => {
     prefix: 'user-files/',
     tier: 'Hot'
   });
-  
+
   // Generate SAS URL (1 hour expiration)
   const sasUrl = await getAzureBlobSasUrl(
     result.name,
@@ -526,7 +526,7 @@ app.post('/upload', multipartExpress(), async (req, res) => {
     { accountName: 'myaccount' },
     3600
   );
-  
+
   res.json({
     name: result.name,
     uri: result.uri,
@@ -618,16 +618,16 @@ app.post('/upload', multipartExpress(), async (req, res) => {
 
 ### Storage Features
 
-✅ **Optional Dependencies** - Install only what you need  
-✅ **Zero Hard Dependencies** - Uses dynamic imports  
-✅ **Batch Uploads** - Handle multiple files efficiently  
-✅ **Field Filtering** - Upload specific form fields only  
-✅ **Custom Metadata** - Add context to uploaded files  
-✅ **Presigned/SAS URLs** - Secure file sharing with expiration  
-✅ **File Deletion** - Clean up uploaded files  
-✅ **Full Configuration** - Customize every aspect  
-✅ **TypeScript Support** - Complete type definitions  
-✅ **Production Ready** - Comprehensive error handling  
+✅ **Optional Dependencies** - Install only what you need
+✅ **Zero Hard Dependencies** - Uses dynamic imports
+✅ **Batch Uploads** - Handle multiple files efficiently
+✅ **Field Filtering** - Upload specific form fields only
+✅ **Custom Metadata** - Add context to uploaded files
+✅ **Presigned/SAS URLs** - Secure file sharing with expiration
+✅ **File Deletion** - Clean up uploaded files
+✅ **Full Configuration** - Customize every aspect
+✅ **TypeScript Support** - Complete type definitions
+✅ **Production Ready** - Comprehensive error handling
 
 ### Best Practices
 
@@ -673,24 +673,21 @@ app.post('/upload', multipartExpress(), async (req, res) => {
    ```typescript
    // S3
    { serverSideEncryption: 'AES256' }
-   
+
    // Azure
    { encryptionScope: 'encryption-scope-name' }
    ```
 
-## Documentation
 
-- [Agent Guidance](./AGENTS.md)
-- [GitHub Documentation](./.github/README.md)
 
 ## Zero Dependency Philosophy
 
 The core `@xkid1/multipart` library has **zero runtime dependencies**. This means:
 
-✅ **Minimal Footprint** - ~15KB gzipped  
-✅ **No Supply Chain Risk** - No transitive dependencies  
-✅ **Fast Installation** - No dependency resolution overhead  
-✅ **Full Control** - You choose what you install and use  
+✅ **Minimal Footprint** - ~15KB gzipped
+✅ **No Supply Chain Risk** - No transitive dependencies
+✅ **Fast Installation** - No dependency resolution overhead
+✅ **Full Control** - You choose what you install and use
 
 Optional peer dependencies are only needed for specific features:
 
@@ -744,7 +741,7 @@ MIT - See [LICENSE](LICENSE) for details
 
 ---
 
-**Project:** @xkid1/multipart v0.2.0  
-**Node.js:** >=26.13.0  
-**Package Manager:** Yarn 4.18.0  
+**Project:** @xkid1/multipart v0.2.0
+**Node.js:** >=26.13.0
+**Package Manager:** Yarn 4.18.0
 **Status:** Production Ready
