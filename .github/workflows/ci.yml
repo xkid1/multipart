@@ -1,52 +1,44 @@
 name: CI
 
+# Code-quality gate. Each job is its own status check, so they can be marked
+# "required" individually in the branch rule for main (see CONTRIBUTING / CI docs).
+# Tests, Build and E2E live in their own workflows so each has its own badge.
+
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  test:
-    uses: ./.github/workflows/test.yml
-
-  build:
-    uses: ./.github/workflows/build.yml
-
-  e2e:
-    uses: ./.github/workflows/e2e.yml
-
-  code-conventions:
-    needs:
-      - test
-      - build
-    if: ${{ needs.test.result == 'success' && needs.build.result == 'success' }}
-    uses: ./.github/workflows/code-conventions.yml
-
-  ci-passed:
-    name: CI passed
-    needs:
-      - test
-      - build
-      - code-conventions
-      - e2e
-    if: always()
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Verify all checks passed
-        env:
-          TEST_RESULT: ${{ needs.test.result }}
-          BUILD_RESULT: ${{ needs.build.result }}
-          CONVENTIONS_RESULT: ${{ needs.code-conventions.result }}
-          E2E_RESULT: ${{ needs.e2e.result }}
-        run: |
-          if [[ "$TEST_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$CONVENTIONS_RESULT" != "success" || "$E2E_RESULT" != "success" ]]; then
-            echo "One or more CI checks did not pass."
-            exit 1
-          fi
-          echo "All CI checks passed."
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn typecheck
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: yarn format:check
