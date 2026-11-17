@@ -69,6 +69,9 @@ export interface AzureBlobContainerClientInterface {
   /** Container name property */
   containerName: string;
 
+  /** Optional account name property */
+  accountName?: string;
+
   /** Get block blob client for blob operations */
   getBlockBlobClient(blobName: string): AzureBlobClientInterface;
 }

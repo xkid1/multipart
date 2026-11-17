@@ -40,7 +40,10 @@ import { parseMultipartWithDuplicates } from '../core/parse-multipart';
 export const multipartExpress = (options: MiddlewareOptions = {}) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // Only process multipart/form-data requests
-    const contentType = req.headers['content-type'];
+    const contentTypeHeader = req.headers['content-type'];
+    const contentType = Array.isArray(contentTypeHeader)
+      ? contentTypeHeader[0]
+      : contentTypeHeader;
     if (!contentType || !contentType.includes('multipart/form-data')) {
       return next();
     }
@@ -57,18 +60,20 @@ export const multipartExpress = (options: MiddlewareOptions = {}) => {
       return next();
     }
 
-    const boundary = boundaryMatch[1].replace(/"/g, '');
+    const boundary = boundaryMatch[1].trim().replace(/^["']|["']$/g, '');
 
     try {
       // Collect the request body
       const chunks: Buffer[] = [];
       let totalSize = 0;
       const maxSize = options.maxSize || 104857600; // 100MB default
+      let exceeded = false;
 
       req.on('data', (chunk: Buffer) => {
+        if (exceeded) return;
         totalSize += chunk.length;
         if (totalSize > maxSize) {
-          req.pause();
+          exceeded = true;
           const error: MiddlewareError = {
             code: 'SIZE_LIMIT_EXCEEDED',
             message: `Request body exceeds size limit of ${maxSize} bytes`,
@@ -77,15 +82,19 @@ export const multipartExpress = (options: MiddlewareOptions = {}) => {
             limit: maxSize,
           };
           (req as any).multipartError = error;
+          chunks.length = 0;
           return;
         }
         chunks.push(chunk);
       });
 
       req.on('end', () => {
-        const body = Buffer.concat(chunks);
+        if (exceeded || (req as any).multipartError) {
+          return next();
+        }
 
         try {
+          const body = Buffer.concat(chunks);
           // Parse multipart data
           const data = parseMultipartWithDuplicates(body, boundary, options);
 
@@ -166,7 +175,7 @@ export const multipartExpress = (options: MiddlewareOptions = {}) => {
  * });
  * ```
  */
-const multipartErrorHandler = (
+export const multipartErrorHandler = (
   err: any,
   req: Request,
   res: Response,
@@ -183,7 +192,7 @@ const multipartErrorHandler = (
 /**
  * Utility: Check if field contains files
  */
-const hasFiles = (req: Request, fieldName?: string): boolean => {
+export const hasFiles = (req: Request, fieldName?: string): boolean => {
   const files = (req as any).files;
   if (!files) return false;
   if (!fieldName) return Object.keys(files).length > 0;
@@ -193,7 +202,7 @@ const hasFiles = (req: Request, fieldName?: string): boolean => {
 /**
  * Utility: Get file(s) from field
  */
-const getFile = (req: Request, fieldName: string) => {
+export const getFile = (req: Request, fieldName: string) => {
   const files = (req as any).files;
   if (!files || !(fieldName in files)) return null;
   return files[fieldName];
@@ -202,8 +211,10 @@ const getFile = (req: Request, fieldName: string) => {
 /**
  * Utility: Get field value
  */
-const getField = (req: Request, fieldName: string) => {
+export const getField = (req: Request, fieldName: string) => {
   const fields = (req as any).fields;
   if (!fields || !(fieldName in fields)) return null;
   return fields[fieldName];
 };
+
+export default multipartExpress;

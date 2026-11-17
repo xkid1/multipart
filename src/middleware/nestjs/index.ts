@@ -11,7 +11,7 @@ import { parseMultipartWithDuplicates } from '../core/parse-multipart';
  * @example
  * ```typescript
  * import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
- * import { MultipartMiddleware } from '@xkid1/multipart/middleware/nestjs';
+ * import { MultipartNestjs } from '@xkid1/multipart/middleware/nestjs';
  * import { UploadController } from './upload.controller';
  *
  * @Module({
@@ -31,7 +31,10 @@ export class MultipartNestjs implements NestMiddleware {
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     // Only process multipart/form-data requests
-    const contentType = req.headers['content-type'];
+    const contentTypeRaw = req.headers['content-type'];
+    const contentType = Array.isArray(contentTypeRaw)
+      ? contentTypeRaw[0]
+      : contentTypeRaw;
     if (!contentType || !contentType.includes('multipart/form-data')) {
       return next();
     }
@@ -39,32 +42,39 @@ export class MultipartNestjs implements NestMiddleware {
     // Extract boundary from content-type header
     const boundaryMatch = contentType.match(/boundary=([^;]+)/);
     if (!boundaryMatch) {
-      throw new BadRequestException('No boundary found in Content-Type header');
+      return next(new BadRequestException('No boundary found in Content-Type header'));
     }
 
-    const boundary = boundaryMatch[1].replace(/"/g, '');
+    const boundary = boundaryMatch[1].trim().replace(/^["']|["']$/g, '');
 
     try {
       // Collect the request body
       const chunks: Buffer[] = [];
       let totalSize = 0;
       const maxSize = this.options.maxSize || 104857600; // 100MB default
+      let exceeded = false;
 
       req.on('data', (chunk: Buffer) => {
+        if (exceeded) return;
         totalSize += chunk.length;
         if (totalSize > maxSize) {
-          req.pause();
-          throw new BadRequestException(
-            `Request body exceeds size limit of ${maxSize} bytes`,
+          exceeded = true;
+          chunks.length = 0;
+          return next(
+            new BadRequestException(
+              `Request body exceeds size limit of ${maxSize} bytes`,
+            ),
           );
         }
         chunks.push(chunk);
       });
 
       req.on('end', () => {
-        const body = Buffer.concat(chunks);
+        if (exceeded) return;
 
         try {
+          const body = Buffer.concat(chunks);
+
           // Parse multipart data
           const data = parseMultipartWithDuplicates(body, boundary, this.options);
 
@@ -99,19 +109,21 @@ export class MultipartNestjs implements NestMiddleware {
           next();
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
-          throw new BadRequestException(err.message);
+          next(new BadRequestException(err.message));
         }
       });
 
       req.on('error', (error) => {
-        throw new BadRequestException(error.message);
+        next(new BadRequestException(error.message));
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        return next(error);
       }
       const err = error instanceof Error ? error : new Error(String(error));
-      throw new BadRequestException(err.message);
+      next(new BadRequestException(err.message));
     }
   }
 }
+
+export default MultipartNestjs;

@@ -60,7 +60,7 @@ export async function uploadToLocal(
   config: LocalStorageConfig,
 ): Promise<LocalStorageUploadResponse> {
   try {
-    if (!file) {
+    if (!file?.buffer) {
       throw new Error('File data is required');
     }
 
@@ -95,23 +95,20 @@ export async function uploadToLocal(
       path: relativePath,
       absolutePath,
       size: stats.size,
-      mimeType: file.mimeType ?? 'application/octet-stream',
+      mimeType: file.mimeType || 'application/octet-stream',
       filename: file.name,
-      extension: file.extension ?? '',
+      extension: file.extension,
       permissions: config.permissions ?? 0o644,
       createdAt: stats.mtime,
     };
   } catch (error) {
+    const rawCode = (error as Record<string, unknown> | null)?.code;
     const storageError: StorageUploadError = {
-      code:
-        error instanceof Error
-          ? (((error as unknown as Record<string, unknown>).code as string) ??
-            'LOCAL_UPLOAD_ERROR')
-          : 'LOCAL_UPLOAD_ERROR',
+      code: typeof rawCode === 'string' ? rawCode : 'LOCAL_UPLOAD_ERROR',
       message:
         error instanceof Error ? error.message : 'Failed to upload file to local storage',
       statusCode: 500,
-      filename: file?.name,
+      filename: file ? file.name : undefined,
       details: {
         error: error instanceof Error ? error.message : String(error),
       },
@@ -214,12 +211,9 @@ export async function deleteFromLocal(
       path: sanitizedPath,
     };
   } catch (error) {
+    const rawCode = (error as Record<string, unknown> | null)?.code;
     const storageError: StorageUploadError = {
-      code:
-        error instanceof Error
-          ? (((error as unknown as Record<string, unknown>).code as string) ??
-            'LOCAL_DELETE_ERROR')
-          : 'LOCAL_DELETE_ERROR',
+      code: typeof rawCode === 'string' ? rawCode : 'LOCAL_DELETE_ERROR',
       message:
         error instanceof Error
           ? error.message

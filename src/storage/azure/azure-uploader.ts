@@ -12,7 +12,13 @@
  * @module @xkid1/multipart/storage/azure
  */
 
-import { BlobSASPermissions, generateBlobSASQueryParameters } from '@azure/storage-blob';
+import path from 'node:path';
+
+import {
+  BlobSASPermissions,
+  generateBlobSASQueryParameters,
+  StorageSharedKeyCredential,
+} from '@azure/storage-blob';
 
 import { MultiPartError } from '@utils';
 
@@ -79,9 +85,10 @@ export async function uploadToAzureBlob(
       throw new Error('Azure account name is required');
     }
 
-    // Generate blob name
+    // Generate blob name with sanitized filename
     const timestamp = Date.now();
-    const blobName = `${config.prefix ?? ''}${timestamp}-${file.name}`;
+    const sanitizedFilename = path.basename(file.name);
+    const blobName = `${config.prefix ?? ''}${timestamp}-${sanitizedFilename}`;
 
     // Build upload options
     const uploadOptions: Record<string, unknown> = {
@@ -115,9 +122,9 @@ export async function uploadToAzureBlob(
       name: blobName,
       container: config.container,
       accountName: config.accountName,
-      size: file.size ?? file.buffer.length,
-      mimeType: file.mimeType ?? 'application/octet-stream',
-      filename: file.name ?? 'unknown',
+      size: file.size,
+      mimeType: config.contentType ?? file.mimeType,
+      filename: file.name,
       uri,
       etag: properties.etag ?? '',
       lastModified: properties.lastModified ?? new Date(),
@@ -178,7 +185,7 @@ export async function deleteFromAzureBlob(
  * @param containerClient - Azure BlobContainerClient instance
  * @param storageAccountKey - Storage account key for signing (required)
  * @param expiresOn - URL expiration date (default: 1 hour from now)
- * @returns  resolving to SAS URL string
+ * @returns Resolving to SAS URL string
  */
 export function getAzureBlobSasUrl(
   blobName: string,
@@ -188,29 +195,21 @@ export function getAzureBlobSasUrl(
 ): string {
   try {
     const expirationDate = expiresOn ?? new Date(Date.now() + 3600 * 1000);
-
     const blobClient = containerClient.getBlockBlobClient(blobName);
+    const accountName = containerClient.accountName ?? '';
+    const credential = new StorageSharedKeyCredential(accountName, storageAccountKey);
 
-    const sasUrl = `${blobClient.url}?${(
-      generateBlobSASQueryParameters as unknown as (
-        params: Record<string, unknown>,
-        key: string,
-      ) => { toString(): string }
-    )(
+    const sasQuery = generateBlobSASQueryParameters(
       {
         containerName: containerClient.containerName,
         blobName,
-        permissions: (
-          BlobSASPermissions as unknown as {
-            parse: (perms: string) => unknown;
-          }
-        ).parse('racwd'),
+        permissions: BlobSASPermissions.parse('racwd'),
         expiresOn: expirationDate,
       },
-      storageAccountKey,
-    ).toString()}`;
+      credential,
+    ).toString();
 
-    return sasUrl;
+    return `${blobClient.url}?${sasQuery}`;
   } catch (error) {
     throw createAzureError(error);
   }
@@ -224,10 +223,10 @@ export function getAzureBlobSasUrl(
  * @returns Error with StorageUploadError data
  */
 function createAzureError(error: unknown, filename?: string): Error {
-  const rawStatusCode = (error as Record<string, unknown>)?.statusCode;
-  const rawCode = (error as Record<string, unknown>)?.code;
-  const rawMessage =
-    error instanceof Error ? error.message : (error as Record<string, unknown>)?.message;
+  const errorObj = (error ?? {}) as Record<string, unknown>;
+  const rawStatusCode = errorObj.statusCode;
+  const rawCode = errorObj.code;
+  const rawMessage = error instanceof Error ? error.message : errorObj.message;
 
   const statusCode = typeof rawStatusCode === 'number' ? rawStatusCode : 500;
   const codeValue = typeof rawCode === 'string' ? rawCode : 'AZURE_BLOB_ERROR';
@@ -242,7 +241,7 @@ function createAzureError(error: unknown, filename?: string): Error {
     details: {
       azureCode: rawCode,
       azureMessage: error instanceof Error ? error.message : undefined,
-      azureDetails: (error as Record<string, unknown>)?.details,
+      azureDetails: errorObj.details,
     },
   };
 
