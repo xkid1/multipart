@@ -12,8 +12,10 @@
 
 ## Verification
 
-- [ ] `yarn check`
-- [ ] `bash scripts/smoke-consumer.sh` (when package exports or packaging changed)
+These run automatically and must pass before the PR can be merged:
+`yarn lint`, `yarn typecheck`, `yarn test` and `yarn e2e`.
+
+- [ ] Ran them locally (`yarn e2e:emulators up` first, for the S3/Azure scenarios)
 - [ ] Tests added or updated for behavior changes
 
 ## Review Checklist
