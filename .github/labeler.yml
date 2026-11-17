@@ -1,18 +1,27 @@
 'source':
   - changed-files:
-      - any-glob-to-any-file: 'src/**/*.ts'
+      - all-globs-to-any-file:
+          - 'src/**/*.ts'
+          - '!src/**/*.test.ts'
 
 'tests':
   - changed-files:
       - any-glob-to-any-file:
           - 'src/**/*.test.ts'
-          - 'test/**/*.ts'
+          - 'test/**'
+
+'e2e':
+  - changed-files:
+      - any-glob-to-any-file: 'e2e/**'
 
 'ci':
   - changed-files:
       - any-glob-to-any-file:
           - '.github/workflows/**'
           - '.github/actions/**'
+          - '.github/dependabot.yml'
+          - '.github/labeler.yml'
+          - '.github/release.yml'
 
 'documentation':
   - changed-files:
@@ -24,4 +33,8 @@
           - 'package.json'
           - 'yarn.lock'
           - 'tsconfig*.json'
+          - '.swcrc'
           - '.yarnrc.yml'
+          - 'eslint.config.ts'
+          - 'vitest.config.ts'
+          - 'scripts/**'

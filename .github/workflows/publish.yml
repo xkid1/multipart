@@ -14,6 +14,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write # npm provenance: signs the package with this workflow's identity
 
 jobs:
   publish:
@@ -70,6 +71,9 @@ jobs:
         run: npm stage publish . --access public || npm publish . --access public --registry https://registry.npmjs.org
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Publish with a provenance attestation (shown on npmjs.com), linking the
+          # tarball to this repo, commit and workflow run.
+          NPM_CONFIG_PROVENANCE: 'true'
 
       - name: Verify npm publication
         if: github.event_name == 'workflow_dispatch'
