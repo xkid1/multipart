@@ -41,7 +41,7 @@ Then install only the SDKs for the integrations you use:
 | ------------------- | ------------------------------------------------------------------------- |
 | Core parser / local | nothing else                                                              |
 | Express             | `express`                                                                 |
-| NestJS              | `@nestjs/common` (Express platform)                                       |
+| NestJS              | `@nestjs/common` `reflect-metadata` `rxjs` (Express platform)             |
 | AWS S3              | `@aws-sdk/client-s3` (+ `@aws-sdk/s3-request-presigner` for signed URLs) |
 | Azure Blob Storage  | `@azure/storage-blob`                                                     |
 
