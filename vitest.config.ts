@@ -6,6 +6,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@utils': fileURLToPath(new URL('./src/utils/index.ts', import.meta.url)),
+      '@libs': fileURLToPath(new URL('./src/libs/index.ts', import.meta.url)),
+      '@middleware': fileURLToPath(new URL('./src/middleware/index.ts', import.meta.url)),
+      '@storage': fileURLToPath(new URL('./src/storage/index.ts', import.meta.url)),
+      '@types': fileURLToPath(new URL('./src/types/index.ts', import.meta.url)),
     },
   },
   test: {
@@ -27,6 +31,12 @@ export default defineConfig({
         'src/**/*.spec.ts',
         'src/**/*.d.ts',
         'src/index.ts',
+        'src/libs/index.ts',
+        'src/middleware/index.ts',
+        'src/storage/index.ts',
+        'src/storage/*/index.ts',
+        'src/utils/index.ts',
+        'src/utils/*/index.ts',
         'src/server.ts',
         'src/**/migrations/**',
         'src/**/types/**',

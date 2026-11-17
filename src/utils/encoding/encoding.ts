@@ -1,7 +1,3 @@
-import Logger from '../helpers/logger/logger.js';
-
-const log = new Logger('encoding');
-
 /**
  * Detect character encoding from Byte Order Mark (BOM).
  *
@@ -22,6 +18,9 @@ const detectBom = (buffer: Buffer): string | undefined => {
   if (buffer.subarray(0, 4).equals(Buffer.from([0x00, 0x00, 0xfe, 0xff]))) {
     return 'utf-32be';
   }
+  if (buffer.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf]))) {
+    return 'utf-8';
+  }
   if (buffer.subarray(0, 2).equals(Buffer.from([0xff, 0xfe]))) return 'utf-16le';
   if (buffer.subarray(0, 2).equals(Buffer.from([0xfe, 0xff]))) return 'utf-16be';
   return undefined;
@@ -38,10 +37,9 @@ const detectBom = (buffer: Buffer): string | undefined => {
  */
 const isValidUtf8 = (buffer: Buffer): boolean => {
   try {
-    buffer.toString('utf8');
+    new TextDecoder('utf-8', { fatal: true }).decode(buffer);
     return true;
-  } catch (err) {
-    log.error('Invalid UTF-8 encoding', err);
+  } catch {
     return false;
   }
 };
@@ -56,7 +54,9 @@ const isValidUtf8 = (buffer: Buffer): boolean => {
  * @returns true if buffer matches 16-bit pattern; false otherwise.
  */
 const is16BitPattern = (buffer: Buffer): boolean =>
-  buffer.length % 2 === 0 && buffer.every((_, i) => i % 2 === 0 || buffer[i] === 0x00);
+  buffer.length >= 2 &&
+  buffer.length % 2 === 0 &&
+  buffer.every((_, i) => i % 2 === 0 || buffer[i] === 0x00);
 
 /**
  * Check if buffer matches a 32-bit encoding pattern.
@@ -68,7 +68,9 @@ const is16BitPattern = (buffer: Buffer): boolean =>
  * @returns true if buffer matches 32-bit pattern; false otherwise.
  */
 const is32BitPattern = (buffer: Buffer): boolean =>
-  buffer.length % 4 === 0 && buffer.every((_, i) => i % 4 !== 0 || buffer[i] === 0x00);
+  buffer.length >= 4 &&
+  buffer.length % 4 === 0 &&
+  buffer.every((_, i) => i % 4 !== 0 || buffer[i] === 0x00);
 
 /**
  * Check if buffer contains binary (non-text) data.
@@ -92,6 +94,7 @@ const isBinary = (buffer: Buffer): boolean =>
  * @returns true if buffer matches custom 16-bit pattern; false otherwise.
  */
 const isCustom16Bit = (buffer: Buffer): boolean =>
+  buffer.length >= 2 &&
   buffer.length % 2 === 0 &&
   buffer.every((_, i) => i % 2 === 1 && buffer[i] >= 0x00 && buffer[i] <= 0xff);
 
@@ -105,28 +108,25 @@ const isCustom16Bit = (buffer: Buffer): boolean =>
  * @returns true if buffer matches custom 32-bit pattern; false otherwise.
  */
 const isCustom32Bit = (buffer: Buffer): boolean =>
+  buffer.length >= 4 &&
   buffer.length % 4 === 0 &&
   buffer.every((_, i) => i % 4 === 3 && buffer[i] >= 0x00 && buffer[i] <= 0xff);
 
 /**
  * Detect encoding fallback when no BOM or UTF-8 detected.
  *
- * Tests against ASCII, Latin-1, 16-bit, 32-bit patterns, binary content,
- * and custom multi-byte encodings.
+ * Tests against 16-bit, 32-bit patterns, binary content, and Latin-1.
  *
  * @param buffer - The input buffer to analyze.
- * @returns An encoding name (e.g., 'ascii', 'latin1', 'binary', '16-bit') or 'unknown'.
+ * @returns An encoding name (e.g., '16-bit', '32-bit', 'binary', 'latin1').
  */
 const detectFallback = (buffer: Buffer): string => {
-  if (buffer.every((byte) => byte >= 0x00 && byte <= 0x7f)) return 'ascii';
-  if (buffer.every((byte) => byte >= 0x00 && byte <= 0xff)) return 'latin1';
   if (is16BitPattern(buffer)) return '16-bit';
   if (is32BitPattern(buffer)) return '32-bit';
-  if (isBinary(buffer)) return 'binary';
-  if (buffer.every((byte) => byte >= 0x00 && byte <= 0xff)) return '8-bit';
   if (isCustom16Bit(buffer)) return '16-bit custom';
   if (isCustom32Bit(buffer)) return '32-bit custom';
-  return 'unknown';
+  if (isBinary(buffer)) return 'binary';
+  return 'latin1';
 };
 
 /**

@@ -12,13 +12,14 @@
  * @module @xkid1/multipart/storage/s3
  */
 
+import path from 'node:path';
+
 import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   type PutObjectCommandInput,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { MultiPartError } from '@utils';
 
@@ -82,15 +83,13 @@ export async function uploadToS3(
       throw new Error('AWS region is required');
     }
 
-    // Import dynamically to avoid requiring @aws-sdk/client-s3 as a dependency
-    // const { PutObjectCommand } = await import('@aws-sdk/client-s3');
-
-    // Generate S3 object key
+    // Generate S3 object key with sanitized filename
     const timestamp = Date.now();
-    const key = `${config.prefix ?? ''}${timestamp}-${file.name}`;
+    const sanitizedFilename = path.basename(file.name);
+    const key = `${config.prefix ?? ''}${timestamp}-${sanitizedFilename}`;
 
-    // Build put object params - cast as unknown to handle AWS SDK type complexities
-    const params = {
+    // Build put object params
+    const params: PutObjectCommandInput = {
       Bucket: config.bucket,
       Key: key,
       Body: file.buffer,
@@ -98,7 +97,7 @@ export async function uploadToS3(
       Metadata: config.metadata ?? {},
       ...(config.acl && { ACL: config.acl }),
       ...(config.serverSideEncryption && {
-        ServerSideEncryption: config.serverSideEncryption as unknown,
+        ServerSideEncryption: config.serverSideEncryption,
       }),
       ...(config.sseKmsKeyId && { SSEKMSKeyId: config.sseKmsKeyId }),
       ...(config.storageClass && { StorageClass: config.storageClass }),
@@ -107,10 +106,10 @@ export async function uploadToS3(
           .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
           .join('&'),
       }),
-    } as unknown;
+    };
 
     // Execute upload
-    const command = new PutObjectCommand(params as PutObjectCommandInput);
+    const command = new PutObjectCommand(params);
     const response = (await s3Client.send(command)) as Record<string, unknown>;
 
     // Construct full S3 URL
@@ -120,13 +119,13 @@ export async function uploadToS3(
       key,
       bucket: config.bucket,
       region: config.region,
-      size: file.size ?? file.buffer.length,
-      mimeType: file.mimeType ?? 'application/octet-stream',
-      filename: file.name ?? 'unknown',
-      versionId: (response.VersionId as string) ?? undefined,
+      size: file.size,
+      mimeType: config.contentType ?? file.mimeType,
+      filename: file.name,
+      versionId: (response.VersionId as string) || undefined,
       url,
       etag: (response.ETag as string) ?? '',
-      serverSideEncryption: (response.ServerSideEncryption as string) ?? undefined,
+      serverSideEncryption: (response.ServerSideEncryption as string) || undefined,
     };
   } catch (error) {
     throw createS3Error(error, file?.name);
@@ -203,6 +202,7 @@ export async function getS3PresignedUrl(
   expiresIn = 3600,
 ): Promise<string> {
   try {
+    const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
@@ -212,9 +212,12 @@ export async function getS3PresignedUrl(
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message.includes('@aws-sdk/s3-request-presigner')
+      (error.message.includes('@aws-sdk/s3-request-presigner') ||
+        (error as unknown as Record<string, unknown>).code === 'ERR_MODULE_NOT_FOUND')
     ) {
-      throw error;
+      throw new MultiPartError(
+        'Package @aws-sdk/s3-request-presigner is required to generate presigned URLs. Please install it with: npm install @aws-sdk/s3-request-presigner',
+      );
     }
     throw createS3Error(error);
   }
@@ -228,7 +231,7 @@ export async function getS3PresignedUrl(
  * @returns Error with StorageUploadError data
  */
 function createS3Error(error: unknown, filename?: string): Error {
-  const errorObj = error as Record<string, unknown>;
+  const errorObj = (error ?? {}) as Record<string, unknown>;
   const metadata = errorObj.$metadata as Record<string, unknown> | undefined;
   const statusCode = (metadata?.httpStatusCode as number) ?? 500;
   const code = (errorObj.name as string) ?? (errorObj.Code as string) ?? 'S3_ERROR';

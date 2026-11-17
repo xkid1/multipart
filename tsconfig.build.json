@@ -24,16 +24,5 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/middleware/express",
-    "src/middleware/nestjs",
-    "src/middleware/storage.ts",
-    "src/storage/s3",
-    "src/storage/azure",
-    "node_modules",
-    "dist",
-    "build",
-    "coverage"
-  ]
+  "exclude": ["src/**/*.test.ts", "node_modules", "dist", "build", "coverage"]
 }

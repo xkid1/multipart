@@ -474,5 +474,78 @@ describe('parseMultipartWithDuplicates', () => {
       const result = parseMultipartWithDuplicates(body, boundary);
       expect(Object.keys(result).length).toBe(0);
     });
+
+    it('handles empty parts in between and invalid sections', () => {
+      const boundary = 'b';
+      const body = Buffer.from(
+        [
+          `--${boundary}`,
+          '   ',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="mid"',
+          '',
+          'valid',
+          `--${boundary}`,
+          'no-header-separator',
+          `--${boundary}--`,
+        ].join('\r\n'),
+      );
+
+      const result = parseMultipartWithDuplicates(body, boundary);
+      expect(result.mid).toBe('valid');
+    });
+
+    it('rejects disallowed MIME types', () => {
+      const boundary = 'b';
+      const body = Buffer.from(
+        `--b\r\nContent-Disposition: form-data; name="file"; filename="test.exe"\r\n` +
+          `Content-Type: application/x-msdownload\r\n\r\nEXE\r\n--b--\r\n`,
+      );
+
+      expect(() =>
+        parseMultipartWithDuplicates(body, boundary, {
+          allowedMimeTypes: ['image/png'],
+        }),
+      ).toThrow('MIME type application/x-msdownload not allowed');
+    });
+
+    it('supports debug option without errors', () => {
+      const boundary = 'b';
+      const body = Buffer.from(
+        `--b\r\nContent-Disposition: form-data; name="user"\r\n\r\njohn\r\n` +
+          `--b\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\n` +
+          `Content-Type: text/plain\r\n\r\nTEXT\r\n--b--\r\n`,
+      );
+
+      const result = parseMultipartWithDuplicates(body, boundary, { debug: true });
+      expect(result.user).toBe('john');
+    });
+
+    it('enforces maxFiles and maxFields and size limits', () => {
+      const boundary = 'b';
+      const bodyFile = Buffer.from(
+        `--b\r\nContent-Disposition: form-data; name="f"; filename="a.txt"\r\nContent-Type: text/plain\r\n\r\nDATA\r\n--b--\r\n`,
+      );
+
+      expect(() =>
+        parseMultipartWithDuplicates(bodyFile, boundary, { maxFiles: 0 }),
+      ).toThrow('Maximum files (0) exceeded');
+
+      expect(() =>
+        parseMultipartWithDuplicates(bodyFile, boundary, { fileSize: 1 }),
+      ).toThrow('File size');
+
+      const bodyField = Buffer.from(
+        `--b\r\nContent-Disposition: form-data; name="field"\r\n\r\nlongvalue\r\n--b--\r\n`,
+      );
+
+      expect(() =>
+        parseMultipartWithDuplicates(bodyField, boundary, { fieldSize: 2 }),
+      ).toThrow('Field size');
+
+      expect(() =>
+        parseMultipartWithDuplicates(bodyField, boundary, { maxFields: 0 }),
+      ).toThrow('Maximum fields (0) exceeded');
+    });
   });
 });

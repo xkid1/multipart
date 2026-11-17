@@ -50,7 +50,7 @@ jobs:
       - name: Verify packed consumer
         run: bash scripts/smoke-consumer.sh
 
-      # Tag pushes stage on npm; approval is completed manually in npm.
+      # Tag pushes stage on npm (or publish directly if staging not enabled); approval is completed manually in npm if staged.
       - name: Setup Node for npmjs.com
         uses: actions/setup-node@v4
         with:
@@ -58,9 +58,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@xkid1'
 
-      - name: Stage on npm
+      - name: Stage or publish on npm
         if: github.event_name == 'push'
-        run: npm stage publish . --access public
+        run: npm stage publish . --access public || npm publish . --access public --registry https://registry.npmjs.org
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -68,7 +68,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: |
           VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")
-          PUBLISHED_VERSION=$(npm view "@xkid1/reed-solomon-algorithm@$VERSION" version \
+          PUBLISHED_VERSION=$(npm view "@xkid1/multipart@$VERSION" version \
             --registry=https://registry.npmjs.org \
             '--@xkid1:registry=https://registry.npmjs.org')
           if [ "$PUBLISHED_VERSION" != "$VERSION" ]; then
@@ -87,7 +87,7 @@ jobs:
 
       - name: Publish to GitHub Packages
         if: github.event_name == 'workflow_dispatch'
-        run: yarn npm publish
+        run: npm publish --access public --registry https://npm.pkg.github.com
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

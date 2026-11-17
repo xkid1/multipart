@@ -741,5 +741,25 @@ describe('multipart parser', () => {
       expect(fileData.buffer).toBeInstanceOf(Buffer);
       expect(fileData.name).toBe('file.txt');
     });
+
+    it('handles empty parts and parts without valid sections', () => {
+      const boundary = 'edge-boundary';
+      const body = Buffer.from(
+        [
+          `--${boundary}`,
+          '   ',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="mid"',
+          '',
+          'valid',
+          `--${boundary}`,
+          'no-header-separator-here',
+          `--${boundary}--`,
+        ].join('\r\n'),
+      );
+
+      const result = multipart(body, boundary);
+      expect(result.mid).toBe('valid');
+    });
   });
 });
