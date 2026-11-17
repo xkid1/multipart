@@ -140,9 +140,20 @@ Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:
 ## Releases
 
 Maintainers release by bumping `version` in `package.json`, adding a matching
-`## [x.y.z]` section to `CHANGELOG.md`, and pushing a `vx.y.z` tag. The publish workflow
-re-runs `yarn check` and the end-user suite, then publishes to npm. A manual run of the
-same workflow, with the tag, publishes to GitHub Packages and creates the GitHub release.
+`## [x.y.z]` section to `CHANGELOG.md`, and pushing a `vx.y.z` tag:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The publish workflow then runs on its own: it re-runs `yarn check`, runs the end-user
+suite (`e2e.yml`) on Node 18–26 and pnpm with the S3/Azure emulators, publishes that
+exact tested tarball to npm (with provenance) and GitHub Packages, and creates the
+GitHub release with generated notes. If any test fails, nothing is published. A version with a pre-release suffix
+(`1.0.0-beta.1`) goes to the `next` dist-tag and becomes a GitHub pre-release.
+
+If a run fails partway, re-run it (or run the workflow manually with the tag). Steps
+whose version is already published are skipped.
 
 Versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor bump may
 include breaking changes.
