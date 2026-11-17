@@ -5,10 +5,12 @@
 [![Tests status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/test.yml?branch=main&label=Tests&logo=github)](https://github.com/xkid1/multipart/actions/workflows/test.yml)
 [![End-user tests status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/e2e.yml?branch=main&label=E2E&logo=github)](https://github.com/xkid1/multipart/actions/workflows/e2e.yml)
 [![CodeQL status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/codeql.yml?branch=main&label=CodeQL&logo=github)](https://github.com/xkid1/multipart/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/xkid1/multipart/badge)](https://scorecard.dev/viewer/?uri=github.com/xkid1/multipart)
 [![Publish package status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/publish.yml?label=Publish%20package&logo=github)](https://github.com/xkid1/multipart/actions/workflows/publish.yml)
 [![npm package version](https://img.shields.io/npm/v/@xkid1/multipart?label=npm&color=orange)](https://www.npmjs.com/package/@xkid1/multipart)
 [![npm user: xkid1](https://img.shields.io/badge/npm-xkid1-CB3837?logo=npm)](https://www.npmjs.com/~xkid1)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](./package.json)
 
 [![Node.js 18 | 20 | 22 | 24 | 26](https://img.shields.io/badge/Node.js-18%20%7C%2020%20%7C%2022%20%7C%2024%20%7C%2026-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Express 4 | 5](https://img.shields.io/badge/Express-4%20%7C%205-000000?logo=express&logoColor=white)](https://expressjs.com)
