@@ -43,8 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Path checks in `deleteFromLocal` used a string prefix test.
 - Published type declarations referenced internal path aliases (`@types`, `@utils`, ...) and didn't resolve for consumers.
 
-### Deprecated
-- `extractPart` and `shouldSkipPart`; use `iterateParts`.
+### Removed
+- `extractPart`, `shouldSkipPart` and `findNextBoundary` (replaced by `iterateParts`).
+- Unused types for a storage middleware that never existed: `MiddlewareContext`, `LocalStorageOptions`, `S3StorageOptions`, `AzureBlobStorageOptions`, `StorageErrorHandler`, plus `AzureBlobPropertiesInterface`, `UploadedFile` and `StorageUploadResponse`.
+- The deprecated `Logger#log()` alias; use `Logger#info()`.
 
 ## [0.1.0] - 2026-11-13
 

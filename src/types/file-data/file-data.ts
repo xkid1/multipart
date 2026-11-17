@@ -6,5 +6,3 @@ export interface FileData {
   extension: string;
   buffer: Buffer;
 }
-
-export type UploadedFile = FileData;

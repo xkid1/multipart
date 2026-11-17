@@ -31,8 +31,6 @@ export default defineConfig(
       'examples/**',
       // End-user suite: runs inside a temporary consumer project (see e2e/run.mjs).
       'e2e/**',
-      'src/middleware/express/**',
-      'src/middleware/nestjs/**',
     ],
   },
 
@@ -315,7 +313,12 @@ export default defineConfig(
   {
     files: ['**/*.{js,mjs,cjs}', ...CONFIG_FILES],
     extends: [tseslint.configs.disableTypeChecked],
-    rules: { 'import-x/no-unresolved': 'off' },
+    rules: {
+      'import-x/no-unresolved': 'off',
+      // Needs type information inside functions (unavailable here); sync fs is
+      // fine in one-shot build/config scripts anyway.
+      'n/no-sync': 'off',
+    },
   },
 
   // ───────────── Tests ─────────────

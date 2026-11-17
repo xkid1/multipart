@@ -7,6 +7,7 @@ We are committed to providing a welcoming and inspiring community for all. We pl
 ## Our Standards
 
 Examples of behavior that contributes to creating a positive environment include:
+
 - Being respectful and inclusive of differing opinions and experiences
 - Providing and accepting constructive feedback gracefully
 - Focusing on what is best for the community
@@ -15,6 +16,7 @@ Examples of behavior that contributes to creating a positive environment include
 - Assuming good intent and asking clarifying questions before attributing negative motivations
 
 Examples of unacceptable behavior include:
+
 - The use of sexualized language or imagery and unwelcome sexual attention or advances
 - Trolling, insulting/derogatory comments, and personal or political attacks
 - Public or private harassment of any kind
@@ -31,13 +33,37 @@ Community leaders are responsible for clarifying and enforcing our standards of 
 
 This Code of Conduct applies within all project spaces and in public spaces where an individual is representing the project or its community. This includes GitHub issues, pull requests, discussions, comments, project repositories, and official community channels.
 
-## Reporting and Enforcement
+## Reporting
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers at the email address provided in the repository. All complaints will be reviewed and investigated promptly and fairly.
+You can report abusive, harassing, or otherwise unacceptable behavior in two ways:
 
-All community leaders are obligated to respect the privacy and security of the reporter of any incident.
+- **Privately to the maintainers:** use the repository's
+  [private reporting form](https://github.com/xkid1/multipart/security/advisories/new).
+  Start the title with `Code of Conduct:` so it's handled as a conduct report, not a
+  vulnerability. Only maintainers can see these reports.
+- **To GitHub:** for a specific comment, issue or user, use **⋯ → Report content** on the
+  comment, or [report abuse to GitHub](https://github.com/contact/report-abuse).
 
-Project maintainers who do not follow or enforce the Code of Conduct in good faith may face temporary or permanent repercussions as determined by other members of the project's leadership.
+Please include links to the content, the date, and any context that helps. All reports are
+reviewed promptly and fairly. Maintainers respect the privacy and security of the reporter.
+If a report involves a maintainer, that maintainer won't take part in handling it.
+
+## Enforcement Guidelines
+
+Maintainers will follow these guidelines when deciding on consequences:
+
+1. **Correction** — for inappropriate language or other unprofessional behavior: a private
+   written warning that explains why the behavior was inappropriate. A public apology may
+   be requested.
+2. **Warning** — for a single serious incident or repeated behavior: a warning with
+   consequences for continuing. No interaction with the people involved for a set period.
+3. **Temporary ban** — for a serious violation, including sustained inappropriate behavior:
+   a temporary ban from interacting with the project.
+4. **Permanent ban** — for a pattern of violations, harassment of an individual, or
+   aggression toward or disparagement of groups of people: a permanent ban from the project.
+
+Maintainers who do not follow or enforce this Code of Conduct in good faith may face
+temporary or permanent consequences determined by the other maintainers.
 
 ## Attribution
 

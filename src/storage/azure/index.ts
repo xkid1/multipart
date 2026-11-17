@@ -3,14 +3,14 @@
  * @module @xkid1/multipart/storage/azure
  */
 
-export { AzureBlobStorage } from './azure-blob-storage.js';
+export { AzureBlobStorage } from './azure-blob-storage';
 export {
   deleteFromAzureBlob,
   existsInAzureBlob,
   getAzureBlobSasUrl,
   uploadMultipleToAzureBlob,
   uploadToAzureBlob,
-} from './azure-uploader.js';
+} from './azure-uploader';
 
 export type {
   AzureBlobClientInterface,
@@ -20,5 +20,5 @@ export type {
   FileData,
   StorageAdapter,
   StorageUploadError,
-} from '../../types/index.js';
-export type { StorageError } from '../shared/index.js';
+} from '@types';
+export type { StorageError } from '../shared';

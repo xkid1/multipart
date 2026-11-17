@@ -9,9 +9,9 @@ import {
   getLocalFileUrl,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './local-uploader.js';
+} from './local-uploader';
 
-import type { FileData, LocalStorageConfig } from '../../types/index.js';
+import type { FileData, LocalStorageConfig } from '@types';
 
 describe('local-uploader', () => {
   let tempDir: string;

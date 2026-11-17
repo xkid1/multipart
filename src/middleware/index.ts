@@ -6,7 +6,7 @@
  * only available from `@xkid1/multipart/middleware/nestjs`.
  */
 
-export { parseMultipartWithDuplicates } from '../libs/index.js';
-export * from './express/index.js';
-export { parseMultipartRequest, toMiddlewareError } from './shared/parse-request.js';
-export { readRequestBody, type RequestLike } from './shared/read-request-body.js';
+export { parseMultipartWithDuplicates } from '@libs';
+export * from './express';
+export { parseMultipartRequest, toMiddlewareError } from './shared/parse-request';
+export { readRequestBody, type RequestLike } from './shared/read-request-body';

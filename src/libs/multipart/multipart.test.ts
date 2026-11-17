@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import multipart from './multipart.js';
+import multipart from './multipart';
 
-import type { FileData } from '../../types/index.js';
+import type { FileData } from '@types';
 
 /**
  * Unit tests for the multipart form-data parser

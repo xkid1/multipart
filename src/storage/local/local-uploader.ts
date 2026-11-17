@@ -16,14 +16,14 @@ import {
   isStorageError,
   sanitizeFilename,
   stringProp,
-} from '../shared/index.js';
+} from '../shared';
 
 import type {
   FileData,
   LocalStorageConfig,
   LocalStorageUploadResponse,
   StorageUploadError,
-} from '../../types/index.js';
+} from '@types';
 
 /** Upper bound on `name-N.ext` attempts before giving up. */
 const MAX_NAME_ATTEMPTS = 1000;
