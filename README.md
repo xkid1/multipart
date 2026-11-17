@@ -11,6 +11,7 @@
 [![npm user: xkid1](https://img.shields.io/badge/npm-xkid1-CB3837?logo=npm)](https://www.npmjs.com/~xkid1)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](./package.json)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/elmeralluaj)
 
 [![Node.js 18 | 20 | 22 | 24 | 26](https://img.shields.io/badge/Node.js-18%20%7C%2020%20%7C%2022%20%7C%2024%20%7C%2026-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Express 4 | 5](https://img.shields.io/badge/Express-4%20%7C%205-000000?logo=express&logoColor=white)](https://expressjs.com)
@@ -287,6 +288,12 @@ plus pnpm, against Express 4 and 5, NestJS 11, and S3/Azure emulators.
 
 See [Contributing.md](./Contributing.md) for guidelines and [CHANGELOG.md](./CHANGELOG.md)
 for release notes.
+
+## Support
+
+If this library saves you time, you can support its development:
+
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-elmeralluaj-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/elmeralluaj)
 
 ## License
 
