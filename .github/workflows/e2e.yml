@@ -9,6 +9,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # publish.yml runs this suite on the release tag, then publishes the tested tarball.
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref (tag) to pack and test
+        required: true
+        type: string
+    outputs:
+      tarball:
+        description: File name of the tested tarball in the "package-tarball" artifact
+        value: ${{ jobs.pack.outputs.tarball }}
 
 permissions:
   contents: read
@@ -26,6 +37,8 @@ jobs:
       tarball: ${{ steps.pack.outputs.tarball }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: ./.github/actions/setup
       - name: npm pack (runs prepack → yarn build)
         id: pack
@@ -55,6 +68,7 @@ jobs:
       # Only the e2e/ folder is needed; the package itself comes from the tarball.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.ref || github.ref }}
           sparse-checkout: e2e
       - uses: actions/download-artifact@v4
         with:

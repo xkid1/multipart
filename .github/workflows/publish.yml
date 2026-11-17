@@ -1,5 +1,25 @@
 name: Publish package
 
+# Fully automated release. Pushing a `vX.Y.Z` tag runs:
+#
+#   verify  → tag matches package.json, CHANGELOG has the version, `yarn check`
+#   e2e     → the end-user suite (e2e.yml) on Node 18–26 + pnpm, with S3/Azure
+#             emulators, against the packed tarball
+#   publish → that exact tested tarball to npm and GitHub Packages, then the
+#             GitHub release
+#
+# Every publish step is skipped when that version already exists, so re-running
+# the workflow (or dispatching it manually with the tag) safely finishes a release
+# that failed halfway.
+#
+# npm authentication, in order of preference:
+#   1. Trusted publishing (OIDC): no secret needed. Configure it on npmjs.com under
+#      the package's Settings → Trusted publisher (GitHub Actions, xkid1/multipart,
+#      publish.yml). Provenance is added automatically.
+#   2. NPM_TOKEN repository secret (granular token, "Read and write (publish and
+#      stage)", "Bypass 2FA"). Needed for the very first publish, because trusted
+#      publishing can only be configured once the package exists on npm.
+
 on:
   push:
     tags:
@@ -7,58 +27,112 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing version tag to finalize after npm approval
+        description: Existing version tag to (re)publish, e.g. v0.2.0
         required: true
         type: string
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write # npm provenance: signs the package with this workflow's identity
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
 jobs:
-  publish:
-    name: Stage npm or finalize release
+  verify:
+    name: Verify release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      name: ${{ steps.meta.outputs.name }}
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+      dist_tag: ${{ steps.meta.outputs.dist_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+          ref: refs/tags/${{ env.RELEASE_TAG }}
       - uses: ./.github/actions/setup
 
       - name: Verify tag and changelog
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+        id: meta
         run: |
           node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
+          import { appendFileSync, readFileSync } from 'node:fs';
 
-          const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+          const { name, version } = JSON.parse(readFileSync('package.json', 'utf8'));
           const releaseTag = process.env.RELEASE_TAG;
-          if (releaseTag !== `v${packageJson.version}`) {
-            throw new Error(`Release tag ${releaseTag} must match v${packageJson.version}`);
+          if (releaseTag !== `v${version}`) {
+            throw new Error(`Release tag ${releaseTag} must match v${version}`);
           }
 
           const changelog = readFileSync('CHANGELOG.md', 'utf8');
-          if (!changelog.includes(`## [${packageJson.version}]`)) {
-            throw new Error(`CHANGELOG.md must include ## [${packageJson.version}]`);
+          if (!changelog.includes(`## [${version}]`)) {
+            throw new Error(`CHANGELOG.md must include ## [${version}]`);
           }
+
+          // 1.2.0-beta.1 -> npm dist-tag "next" and a GitHub pre-release.
+          const prerelease = version.includes('-');
+          appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `name=${name}\nversion=${version}\nprerelease=${prerelease}\n` +
+              `dist_tag=${prerelease ? 'next' : 'latest'}\n`,
+          );
           NODE
 
       - name: Run package checks
         run: yarn check
 
-      # The full Node.js matrix runs in CI (e2e.yml); here the exact commit being
-      # published is re-tested end to end on the release toolchain.
-      - name: End-user tests (packed tarball, frameworks, S3/Azure emulators)
-        env:
-          E2E_REQUIRE_CLOUD: '1'
-        run: |
-          bash e2e/emulators.sh up
-          node e2e/run.mjs
-          bash e2e/emulators.sh down
+  e2e:
+    name: End-user tests
+    needs: verify
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/e2e.yml
+    with:
+      ref: refs/tags/${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
-      # Tag pushes stage on npm (or publish directly if staging not enabled); approval is completed manually in npm if staged.
+  publish:
+    name: Publish ${{ needs.verify.outputs.version }}
+    needs: [verify, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release
+      packages: write # publish to GitHub Packages
+      id-token: write # npm trusted publishing + provenance
+    env:
+      NAME: ${{ needs.verify.outputs.name }}
+      VERSION: ${{ needs.verify.outputs.version }}
+      DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
+    steps:
+      # Only .nvmrc is needed here; the package itself is the tested tarball.
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          sparse-checkout: .nvmrc
+          sparse-checkout-cone-mode: false
+
+      - name: Download tested tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+          path: ${{ runner.temp }}/pack
+
+      - name: Locate tarball
+        env:
+          TARBALL_NAME: ${{ needs.e2e.outputs.tarball }}
+        run: |
+          TARBALL="$RUNNER_TEMP/pack/$TARBALL_NAME"
+          test -f "$TARBALL" || { echo "Tested tarball $TARBALL not found"; exit 1; }
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------- npmjs.com
       - name: Setup Node for npmjs.com
         uses: actions/setup-node@v4
         with:
@@ -66,30 +140,21 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@xkid1'
 
-      - name: Stage or publish on npm
-        if: github.event_name == 'push'
-        run: npm stage publish . --access public || npm publish . --access public --registry https://registry.npmjs.org
+      - name: Publish to npm
         env:
+          # Used only if trusted publishing isn't configured for the package yet.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Publish with a provenance attestation (shown on npmjs.com), linking the
-          # tarball to this repo, commit and workflow run.
-          NPM_CONFIG_PROVENANCE: 'true'
-
-      - name: Verify npm publication
-        if: github.event_name == 'workflow_dispatch'
+          REGISTRY: https://registry.npmjs.org
         run: |
-          VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")
-          PUBLISHED_VERSION=$(npm view "@xkid1/multipart@$VERSION" version \
-            --registry=https://registry.npmjs.org \
-            '--@xkid1:registry=https://registry.npmjs.org')
-          if [ "$PUBLISHED_VERSION" != "$VERSION" ]; then
-            echo "Expected npm version $VERSION, found $PUBLISHED_VERSION."
-            exit 1
+          if npm view "$NAME@$VERSION" version --registry "$REGISTRY" "--@xkid1:registry=$REGISTRY" >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already on npm; skipping."
+            exit 0
           fi
+          npm publish "$TARBALL" --access public --provenance --tag "$DIST_TAG" \
+            --registry "$REGISTRY" "--@xkid1:registry=$REGISTRY"
 
-      # Manual dispatch runs after npm approval and publishes to GitHub Packages.
+      # ---------------------------------------------------------- GitHub Packages
       - name: Setup Node for GitHub Packages
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -97,19 +162,27 @@ jobs:
           scope: '@xkid1'
 
       - name: Publish to GitHub Packages
-        if: github.event_name == 'workflow_dispatch'
-        run: npm publish --access public --registry https://npm.pkg.github.com
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY: https://npm.pkg.github.com
+        run: |
+          if npm view "$NAME@$VERSION" version --registry "$REGISTRY" "--@xkid1:registry=$REGISTRY" >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already on GitHub Packages; skipping."
+            exit 0
+          fi
+          npm publish "$TARBALL" --tag "$DIST_TAG" \
+            --registry "$REGISTRY" "--@xkid1:registry=$REGISTRY"
 
-      - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch'
+      # ------------------------------------------------------------ GitHub release
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists."
-          else
-            gh release create "$RELEASE_TAG" --generate-notes --verify-tag
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; skipping."
+            exit 0
           fi
+          FLAGS=(--repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag)
+          if [ "$PRERELEASE" = "true" ]; then FLAGS+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${FLAGS[@]}"
