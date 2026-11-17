@@ -3,10 +3,10 @@ import { EventEmitter } from 'node:events';
 import { HttpException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createMultipartNestjs, MultipartNestjs, multipartNestjs } from './index.js';
+import { createMultipartNestjs, MultipartNestjs, multipartNestjs } from './index';
 
 describe('nestjs middleware', () => {
-  const createMockReq = (headers: Record<string, string | string[]> = {}) => {
+  const createMockReq = (headers: Record<string, string | string[]> = {}): any => {
     const emitter = new EventEmitter() as any;
     emitter.headers = headers;
     emitter.method = 'POST';
@@ -14,7 +14,7 @@ describe('nestjs middleware', () => {
     return emitter;
   };
 
-  const createMockRes = () => ({}) as any;
+  const createMockRes = (): any => ({});
 
   const multipartHeaders = (boundary: string) => ({
     'content-type': `multipart/form-data; boundary=${boundary}`,
@@ -30,7 +30,7 @@ describe('nestjs middleware', () => {
     middleware: { use: MultipartNestjs['use'] },
     req: any,
     chunks: Buffer[] = [],
-  ) => {
+  ): Promise<any> => {
     const next = vi.fn();
     const promise = middleware.use(req, createMockRes(), next);
     for (const chunk of chunks) req.emit('data', chunk);

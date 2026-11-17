@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { MultiPartError } from '../../utils/index.js';
+import { MultiPartError } from '@utils';
 
 import {
   getField,
@@ -10,10 +10,10 @@ import {
   hasFiles,
   multipartErrorHandler,
   multipartExpress,
-} from './index.js';
+} from './index';
 
 describe('express middleware', () => {
-  const createMockReq = (headers: Record<string, string | string[]> = {}) => {
+  const createMockReq = (headers: Record<string, string | string[]> = {}): any => {
     const emitter = new EventEmitter() as any;
     emitter.headers = headers;
     emitter.method = 'POST';
@@ -21,7 +21,7 @@ describe('express middleware', () => {
     return emitter;
   };
 
-  const createMockRes = () => {
+  const createMockRes = (): any => {
     const res: any = {};
     res.status = vi.fn().mockReturnValue(res);
     res.json = vi.fn().mockReturnValue(res);

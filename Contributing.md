@@ -1,223 +1,153 @@
 # Contributing to @xkid1/multipart
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
+Thanks for helping! This guide covers how to report issues, set up the project, and get
+a pull request merged.
 
-## Code of Conduct
+By participating you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md). Please report
+security issues privately, as described in [SECURITY.md](./SECURITY.md), not in issues.
 
-This project adheres to the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
+## Reporting bugs and requesting features
 
-## How to Contribute
+Use the [issue forms](https://github.com/xkid1/multipart/issues/new/choose). They ask for
+the details needed to reproduce a problem: package version, Node.js version, ESM or
+CommonJS, framework, and a minimal code sample. Please search existing issues first.
 
-### Reporting Bugs
+Feature ideas that keep the core parser **dependency-free** and integrations **optional**
+are the easiest to accept.
 
-Before reporting a bug:
-1. Check the [existing issues](https://github.com/xkid1/multipart/issues) to avoid duplicates
-2. Verify the bug exists in the latest version
-3. Test on multiple Node.js versions (we support Node.js >= 26.13.0)
+## Development setup
 
-When reporting a bug, include:
-- A clear, descriptive title
-- Steps to reproduce the issue
-- Expected vs. actual behavior
-- Your environment (Node.js version, OS, etc.)
-- A minimal reproducible example if possible
+| Tool    | Version                                                                 |
+| ------- | ----------------------------------------------------------------------- |
+| Node.js | 26 for development (see `.nvmrc`); the package itself supports Node 18+ |
+| Yarn    | 4.18.0 via Corepack (`corepack enable`)                                 |
+| Docker  | only for the S3/Azure end-user tests and the Node.js version matrix     |
 
-### Suggesting Features
-
-Feature suggestions are welcome! Before proposing:
-1. Check if the feature has been suggested already
-2. Explain the use case and expected behavior
-3. Consider how it aligns with the library's philosophy (zero dependencies, lightweight, RFC-compliant)
-
-We prioritize features that:
-- Enhance RFC 2388/7578 compliance
-- Improve performance without adding dependencies
-- Maintain backward compatibility
-- Have clear use cases
-
-### Submitting Code Changes
-
-#### Prerequisites
-- Node.js >= 26.13.0
-- Yarn 4.18.0 (enforced via Corepack)
-- Git knowledge (commits, branches, pull requests)
-
-#### Setup
 ```bash
-# Clone the repository
 git clone https://github.com/xkid1/multipart.git
 cd multipart
-
-# Install dependencies
+corepack enable
 yarn install
-
-# Create a feature branch
-git checkout -b feature/your-feature-name
+git checkout -b fix/short-description
 ```
 
-#### Development Workflow
+## Commands
 
-1. **Make your changes** following the coding standards below
-2. **Run the validation pipeline**:
-   ```bash
-   yarn check  # Runs format, lint, typecheck, coverage, and build
-   ```
-3. **Run tests during development**:
-   ```bash
-   yarn test:watch  # Interactive testing
-   ```
-4. **Format and fix issues**:
-   ```bash
-   yarn format      # Auto-format code
-   yarn lint:fix    # Auto-fix linting issues
-   ```
+| Command                    | What it does                                                               |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `yarn test` / `test:watch` | unit tests (Vitest)                                                        |
+| `yarn lint` / `lint:fix`   | ESLint                                                                     |
+| `yarn typecheck`           | TypeScript, no emit                                                        |
+| `yarn format`              | Prettier                                                                   |
+| `yarn coverage`            | tests with coverage thresholds                                             |
+| `yarn build`               | ESM + CommonJS builds and type declarations into `dist/`                   |
+| `yarn check`               | all of the above, as the release job runs it                               |
+| `yarn e2e`                 | packs the tarball and tests it as an end user ([details](./e2e/README.md)) |
+| `yarn e2e:emulators up`    | starts S3 and Azure emulators (Docker) for the cloud scenarios             |
+| `yarn e2e:matrix`          | end-user suite on Node 18–26, each in a container                          |
 
-#### Coding Standards
+## Project layout
 
-- **TypeScript**: Maintain strict type safety; avoid `any`
-- **Imports**: Use ESM syntax (`import type`, `import`)
-- **Comments**: Only comment code that needs clarification
-- **Line Length**: Prefer readability; ESLint enforces max-line-length
-- **Null Checks**: Maintain strict null checks (`tsconfig.json`)
-- **Return Types**: Always include explicit return types on exported functions
+The source is organized in layers. Each layer has an `index.ts` barrel and a path alias:
 
-Example:
-```typescript
-/**
- * Parse multipart form data from a buffer.
- * @param buffer The raw HTTP request body buffer
- * @param boundary The multipart boundary string
- * @returns An array of parsed form fields
- */
-export function parseMultipart(buffer: Buffer, boundary: string): FormField[] {
-  // Implementation
-}
+```text
+src/
+├── index.ts             # public root entry
+├── types/      @types   # type definitions only (no runtime code)
+├── utils/      @utils   # header parsing, part iteration, encoding, errors, logger
+├── libs/       @libs    # the parser (multipart, parseMultipartWithDuplicates), form helpers
+├── middleware/ @middleware
+│   ├── shared/          # framework-agnostic request reading and parsing
+│   ├── express/         # → @xkid1/multipart/middleware/express
+│   └── nestjs/          # → @xkid1/multipart/middleware/nestjs (imports @nestjs/common)
+└── storage/    @storage
+    ├── shared/          # filename sanitizing, object keys, errors
+    ├── local/           # → @xkid1/multipart/storage/local
+    ├── s3/              # → @xkid1/multipart/storage/s3 (imports @aws-sdk/client-s3)
+    └── azure/           # → @xkid1/multipart/storage/azure (imports @azure/storage-blob)
+e2e/                     # end-user tests against the packed tarball
 ```
 
-#### Testing Requirements
+Dependencies point downwards: `types` ← `utils` ← `libs` ← `middleware` / `storage`.
+ESLint enforces the key boundaries: `types` contains no runtime code, and `storage` never
+imports `middleware`.
 
-Every bug fix and feature **must include corresponding tests**:
-- Add tests to existing test files in `src/` (e.g., `src/parser.test.ts`)
-- Aim for high signal-to-noise ratio; test behavior, not implementation details
-- Include edge cases (empty fields, large files, special characters, encoding variations)
-- Run `yarn coverage` to verify coverage
+## Coding guidelines
 
-Example test:
+- **Imports.** Import other layers through their alias (`import { MultiPartError } from '@utils'`).
+  Inside a layer, use relative imports without an extension (`'./form-parts'`). Never import
+  your own layer's alias, because that creates a cycle. The build rewrites aliases to
+  relative `.js` paths in the published output.
+- **Optional dependencies stay optional.** Code that imports a framework or cloud SDK at
+  runtime belongs in its own subpath, never in the root entry. Adding a runtime dependency
+  needs maintainer approval.
+- **Types.** TypeScript runs in `strict` mode. Avoid `any`, and give exported functions
+  explicit types and JSDoc.
+- **Errors.** Throw `MultiPartError` with a code from `MultiPartErrorCode` and a
+  `statusCode`, so the middleware can map it to an HTTP response.
+- **Untrusted input.** Everything in a request is attacker-controlled, including names,
+  filenames, headers and sizes. Bound the work, and never use client values as paths.
+
+## Tests
+
+Every bug fix and behavior change needs a test. Bug fixes need a regression test that fails
+without the fix.
+
+- Unit tests sit next to the code (`*.test.ts`).
+- Parser changes should also cover malformed input. `src/libs/multipart/regressions.test.ts`
+  has helpers, including a round trip through Node's own `FormData` encoder.
+- Changes to exports, packaging, middleware or storage should also pass `yarn e2e`, which
+  tests the real tarball with Express 4/5, NestJS and the cloud SDKs.
+
 ```typescript
-import { describe, it, expect } from 'vitest';
-import { parseMultipart } from './parser';
+import { describe, expect, it } from 'vitest';
 
-describe('parseMultipart', () => {
-  it('should parse simple form fields', () => {
-    const buffer = Buffer.from('...');
-    const result = parseMultipart(buffer, 'boundary');
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('field');
-  });
+import { parseMultipartWithDuplicates } from './parse-multipart';
 
-  it('should handle UTF-8 encoded values', () => {
-    // Test with UTF-8 content
+describe('parseMultipartWithDuplicates', () => {
+  it('keeps every value of a repeated field', () => {
+    const body = Buffer.from(
+      '--b\r\nContent-Disposition: form-data; name="tag"\r\n\r\na\r\n' +
+        '--b\r\nContent-Disposition: form-data; name="tag"\r\n\r\nb\r\n--b--\r\n',
+    );
+    expect(parseMultipartWithDuplicates(body, 'b').tag).toEqual(['a', 'b']);
   });
 });
 ```
 
-#### Commit Messages
+## Commit messages
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `refactor:` - Code refactoring
-- `test:` - Test additions/changes
-- `docs:` - Documentation
-- `chore:` - Build, dependencies, tooling
+Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`,
+`refactor:`, `test:`, `docs:`, `chore:`, `ci:`. Mark breaking changes with `!`
+(for example `feat!:`) and explain them in the body.
 
-Example:
-```
-feat: add support for RFC 7578 multipart filename extensions
+## Pull requests
 
-- Parse RFC 7578 filename* parameter for non-ASCII filenames
-- Add tests for UTF-8 and ISO-8859-1 encoded filenames
-- Update documentation with encoding handling details
-```
+1. Open the PR against `main` and fill in the template. Link the issue (`Fixes #123`).
+2. These checks must pass before the PR can be merged:
 
-#### Pull Request Process
+   | Check       | Command                                |
+   | ----------- | -------------------------------------- |
+   | `Lint`      | `yarn lint`                            |
+   | `Typecheck` | `yarn typecheck`                       |
+   | `Test`      | `yarn test`                            |
+   | `E2E`       | `yarn e2e` on Node 18–26, npm and pnpm |
 
-1. **Create a PR** from your feature branch to `main`
-2. **Provide a clear title and description**:
-   - Link related issues (`Fixes #123`)
-   - Explain the change and why it's needed
-   - Highlight any breaking changes
-3. **Ensure CI passes**:
-   - All checks must pass (linting, types, tests, coverage)
-   - Code coverage should not decrease
-4. **Address review feedback** promptly
-5. **Once approved**, your PR will be merged by a maintainer
+   CI also runs `Format`, `Build` and CodeQL, so fix any findings they report.
+3. Update `CHANGELOG.md` for user-visible changes, and the README for API changes.
+4. A maintainer reviews and merges once checks pass and feedback is addressed.
 
-### Documentation
+## Releases
 
-Documentation improvements are always welcome:
-- Update [README.md](./README.md) for user-facing changes
-- Add JSDoc comments to exported functions
-- Include examples for new features
-- Keep documentation in sync with code changes
+Maintainers release by bumping `version` in `package.json`, adding a matching
+`## [x.y.z]` section to `CHANGELOG.md`, and pushing a `vx.y.z` tag. The publish workflow
+re-runs `yarn check` and the end-user suite, then publishes to npm. A manual run of the
+same workflow, with the tag, publishes to GitHub Packages and creates the GitHub release.
 
-## Project Architecture
-
-### Core Components
-- **Parser** (`src/parser.ts`): RFC-compliant multipart parsing
-- **Encoding Detector** (`src/encoding.ts`): Multi-encoding support (UTF-8/16/32, ASCII, Latin-1, binary)
-- **Middleware** (`src/middleware/`): Express/NestJS integration
-- **Storage** (`src/storage/`): Local, S3, and Azure Blob support
-
-### Key Principles
-1. **Zero Runtime Dependencies**: All parsing is pure TypeScript
-2. **Buffer Safety**: Direct byte operations with no assumptions about memory
-3. **RFC Compliance**: Strict adherence to RFC 2388 and RFC 7578
-4. **Performance**: Optimized for typical multipart payloads without sacrificing correctness
-
-### Directory Structure
-```
-src/
-├── index.ts              # Main export
-├── parser.ts             # Core parsing logic
-├── encoding.ts           # Encoding detection
-├── types.ts              # Type definitions
-├── middleware/           # Framework middleware
-│   ├── express/
-│   └── nestjs/
-├── storage/              # Storage adapters
-│   ├── local/
-│   ├── s3/
-│   └── azure/
-└── *.test.ts             # Test files
-```
-
-## Development Tools
-
-- **Build**: SWC (JavaScript compiler) + TypeScript (type checking)
-- **Linting**: ESLint with TypeScript and security plugins
-- **Formatting**: Prettier
-- **Testing**: Vitest with V8 coverage
-- **Type Checking**: TypeScript compiler
-
-## Maintenance & Releases
-
-Releases follow [Semantic Versioning](https://semver.org/):
-- **Patch** (0.0.x): Bug fixes, security patches
-- **Minor** (0.x.0): New features, backward compatible
-- **Major** (x.0.0): Breaking changes
-
-Security patches are prioritized; typically released within 48 hours of confirmation.
-
-## Questions?
-
-- Check existing [issues](https://github.com/xkid1/multipart/issues) and [discussions](https://github.com/xkid1/multipart/discussions)
-- Maintainer contact available in the repository
+Versions follow [Semantic Versioning](https://semver.org/). Before 1.0, a minor bump may
+include breaking changes.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License (see [LICENSE](./LICENSE)).
-
----
-
-Thank you for making @xkid1/multipart better! 🎉
+By contributing, you agree that your contributions are licensed under the
+[MIT License](./LICENSE).

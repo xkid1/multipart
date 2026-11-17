@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/xkid1/multipart/security/advisories/new
+    about: Please report security issues privately, not as public issues. See SECURITY.md.
+  - name: Documentation
+    url: https://github.com/xkid1/multipart#readme
+    about: Setup for Express, NestJS, plain Node.js, and local / S3 / Azure storage.

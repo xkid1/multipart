@@ -47,9 +47,6 @@ jobs:
       - name: Run package checks
         run: yarn check
 
-      - name: Verify packed consumer
-        run: bash scripts/smoke-consumer.sh
-
       # The full Node.js matrix runs in CI (e2e.yml); here the exact commit being
       # published is re-tested end to end on the release toolchain.
       - name: End-user tests (packed tarball, frameworks, S3/Azure emulators)

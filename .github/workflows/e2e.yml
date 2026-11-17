@@ -5,12 +5,18 @@ name: End-user tests
 # TypeScript resolution modes, and S3/Azure against local emulators. See e2e/README.md.
 
 on:
-  workflow_call:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pack:
@@ -33,7 +39,7 @@ jobs:
           path: ${{ runner.temp }}/pack/*.tgz
           retention-days: 7
 
-  e2e:
+  matrix:
     name: Node ${{ matrix.node }} (${{ matrix.pm }})
     needs: pack
     runs-on: ubuntu-latest
@@ -70,3 +76,18 @@ jobs:
       - name: Stop emulators
         if: always()
         run: bash e2e/emulators.sh down
+
+  # One stable status check to mark as required, whatever the matrix contains.
+  e2e:
+    name: E2E
+    needs: [pack, matrix]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All end-user test jobs passed
+        env:
+          PACK_RESULT: ${{ needs.pack.result }}
+          MATRIX_RESULT: ${{ needs.matrix.result }}
+        run: |
+          echo "pack: $PACK_RESULT, matrix: $MATRIX_RESULT"
+          [ "$PACK_RESULT" = success ] && [ "$MATRIX_RESULT" = success ]

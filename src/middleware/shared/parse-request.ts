@@ -5,16 +5,12 @@ import {
   parseMultipartWithDuplicates,
   resolveLimits,
   splitFormData,
-} from '../../libs/index.js';
-import { MultiPartError, MultiPartErrorCode } from '../../utils/index.js';
+} from '@libs';
+import { MultiPartError, MultiPartErrorCode } from '@utils';
 
-import { readRequestBody, type RequestLike } from './read-request-body.js';
+import { readRequestBody, type RequestLike } from './read-request-body';
 
-import type {
-  MiddlewareError,
-  MiddlewareOptions,
-  ParsedMultipartRequest,
-} from '../../types/index.js';
+import type { MiddlewareError, MiddlewareOptions, ParsedMultipartRequest } from '@types';
 
 /**
  * Read and parse a multipart/form-data request. Framework-agnostic: the Express

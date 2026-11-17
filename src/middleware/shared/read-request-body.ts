@@ -1,5 +1,5 @@
-import { limitError } from '../../libs/index.js';
-import { MultiPartError, MultiPartErrorCode } from '../../utils/index.js';
+import { limitError } from '@libs';
+import { MultiPartError, MultiPartErrorCode } from '@utils';
 
 /**
  * The parts of a Node.js request (`http.IncomingMessage`) the middleware uses.

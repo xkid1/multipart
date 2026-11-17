@@ -1,4 +1,4 @@
-import { splitPartSections } from './split-part-sections.js';
+import { splitPartSections } from './split-part-sections';
 
 /** A single body part, split into its raw header block and body bytes. */
 export interface RawPart {

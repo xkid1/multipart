@@ -171,20 +171,6 @@ class Logger {
   }
 
   /**
-   * Log an info-level message (alias of `info()`).
-   *
-   * Kept for backward compatibility. Prefer `info()` for new code.
-   *
-   * @param message - The primary message to log.
-   * @param args - Additional arguments to log.
-   *
-   * @deprecated Use `info()` instead.
-   */
-  log(message: unknown, ...args: unknown[]): void {
-    this.write('info', message, args);
-  }
-
-  /**
    * Log an info-level message (default level).
    *
    * Info messages are shown by default (unless LOG_LEVEL is set higher).

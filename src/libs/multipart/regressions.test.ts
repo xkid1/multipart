@@ -6,12 +6,12 @@ import { randomBytes } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { extractBoundary } from '../form-data/content-type.js';
+import { extractBoundary } from '../form-data/content-type';
 
-import multipart from './multipart.js';
-import { parseMultipartWithDuplicates } from './parse-multipart.js';
+import multipart from './multipart';
+import { parseMultipartWithDuplicates } from './parse-multipart';
 
-import type { FileData } from '../../types/index.js';
+import type { FileData } from '@types';
 
 const B = 'XyZ';
 

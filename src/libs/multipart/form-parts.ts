@@ -6,9 +6,9 @@ import {
   extractName,
   iterateParts,
   parseHeaders,
-} from '../../utils/index.js';
+} from '@utils';
 
-import type { FileData } from '../../types/index.js';
+import type { FileData } from '@types';
 
 /** A named form part, before any limits or conversion are applied. */
 export interface FormPart {

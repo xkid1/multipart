@@ -18,7 +18,7 @@ export {
   getAzureBlobSasUrl,
   uploadMultipleToAzureBlob,
   uploadToAzureBlob,
-} from './azure/index.js';
+} from './azure';
 export {
   deleteFromLocal,
   existsInLocal,
@@ -26,7 +26,7 @@ export {
   LocalStorage,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './local/index.js';
+} from './local';
 export {
   deleteFromS3,
   existsInS3,
@@ -34,14 +34,14 @@ export {
   S3Storage,
   uploadMultipleToS3,
   uploadToS3,
-} from './s3/index.js';
+} from './s3';
 export {
   buildContentDisposition,
   createUniqueName,
   isStorageError,
   sanitizeFilename,
   type StorageError,
-} from './shared/index.js';
+} from './shared';
 export type {
   AzureBlobContainerClientInterface,
   AzureBlobUploadConfig,
@@ -54,4 +54,4 @@ export type {
   S3UploadResponse,
   StorageAdapter,
   StorageUploadError,
-} from '../types/index.js';
+} from '@types';

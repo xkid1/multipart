@@ -1,4 +1,4 @@
-import { getHeaderParam } from '../../utils/index.js';
+import { getHeaderParam } from '@utils';
 
 /** Normalize a header that Node may expose as a string or string[]. */
 export const firstHeaderValue = (

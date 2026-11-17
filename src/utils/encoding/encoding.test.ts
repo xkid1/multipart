@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import encoding from './encoding.js';
+import encoding from './encoding';
 
 describe('encoding utility', () => {
   it('should return unknown for empty buffer', () => {

@@ -43,9 +43,56 @@ entries, so npm never installs an SDK the application didn't ask for.
 Each has its own `.d.ts` files, so TypeScript resolves the correct format under
 `node16`/`nodenext`, `bundler` and legacy `node10` resolution.
 
+### Import aliases
+
+Source files import other layers through the `tsconfig.json` aliases (`@types`,
+`@libs`, `@utils`, `@middleware`, `@storage`); imports inside a layer stay relative
+and extensionless. Neither form can be resolved by consumers, so the build rewrites
+them to real relative `.js` paths:
+
+- JavaScript: swc, via `paths` in `.swcrc`;
+- declarations: `scripts/finalize-build.mjs`, which reads the aliases from `tsconfig.json`.
+
+When adding an alias, update `tsconfig.json`, `.swcrc` and `vitest.config.ts`. `yarn e2e`
+fails if an alias leaks into the published package.
+
 ## Local validation
 
 ```bash
 yarn check                       # format, lint, typecheck, tests + coverage, build
-bash scripts/smoke-consumer.sh   # the packed-consumer check the publish job runs
+yarn e2e                         # the packed-tarball end-user suite (see e2e/README.md)
 ```
+
+## Pull request checks
+
+Every pull request (and every push to `main`) runs these workflows. Each job has a
+short, stable name so it can be marked as a required check:
+
+| Workflow (badge) | Check name  | Runs                                                                  | Required |
+| ---------------- | ----------- | --------------------------------------------------------------------- | -------- |
+| `ci.yml` (CI)    | `Lint`      | `yarn lint`                                                           | yes      |
+| `ci.yml` (CI)    | `Typecheck` | `yarn typecheck`                                                      | yes      |
+| `test.yml`       | `Test`      | `yarn test`                                                           | yes      |
+| `e2e.yml`        | `E2E`       | `yarn e2e` on Node 18–26 + pnpm (summarizes the matrix jobs)          | yes      |
+| `ci.yml` (CI)    | `Format`    | `yarn format:check`                                                   | optional |
+| `build.yml`      | `Build`     | `yarn build`                                                          | optional |
+| `codeql.yml`     | `Analyze (…)` | CodeQL security + code-quality queries (TypeScript and workflows)   | optional |
+
+### Blocking merges until checks pass
+
+Workflow files can't block a merge on their own. GitHub enforces it with a rule on
+`main`, set once by a repository admin:
+
+1. **Settings → Rules → Rulesets → New ruleset → New branch ruleset**.
+2. Name it `main`, set **Enforcement status** to **Active**, and under **Target
+   branches** add **Include default branch**.
+3. Enable **Require a pull request before merging**.
+4. Enable **Require status checks to pass**, then **Add checks**: `Lint`, `Typecheck`,
+   `Test`, `E2E` (optionally `Format` and `Build`). Choose source **GitHub Actions**.
+5. Optionally enable **Require branches to be up to date before merging**, so checks
+   run against the latest `main`.
+6. **Create**.
+
+A check name can only be picked from the list once it has run at least once, so push
+these workflows (or open a PR) before step 4.
+

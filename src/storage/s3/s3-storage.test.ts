@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { S3Storage } from './s3-storage.js';
-import { existsInS3, uploadMultipleToS3, uploadToS3 } from './s3-uploader.js';
+import { S3Storage } from './s3-storage';
+import { existsInS3, uploadMultipleToS3, uploadToS3 } from './s3-uploader';
 
-import type { FileData, S3ClientInterface, S3UploadConfig } from '../../types/index.js';
+import type { FileData, S3ClientInterface, S3UploadConfig } from '@types';
 
 vi.mock('@aws-sdk/client-s3', () => {
   const command = (type: string) =>

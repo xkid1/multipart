@@ -1,8 +1,22 @@
 # @xkid1/multipart
 
-[![npm version](https://img.shields.io/npm/v/@xkid1/multipart)](https://www.npmjs.com/package/@xkid1/multipart)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node.js 18+](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+[![CI status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/ci.yml?branch=main&label=CI&logo=github)](https://github.com/xkid1/multipart/actions/workflows/ci.yml)
+[![Build status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/build.yml?branch=main&label=Build&logo=github)](https://github.com/xkid1/multipart/actions/workflows/build.yml)
+[![Tests status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/test.yml?branch=main&label=Tests&logo=github)](https://github.com/xkid1/multipart/actions/workflows/test.yml)
+[![End-user tests status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/e2e.yml?branch=main&label=E2E&logo=github)](https://github.com/xkid1/multipart/actions/workflows/e2e.yml)
+[![CodeQL status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/codeql.yml?branch=main&label=CodeQL&logo=github)](https://github.com/xkid1/multipart/actions/workflows/codeql.yml)
+[![Publish package status](https://img.shields.io/github/actions/workflow/status/xkid1/multipart/publish.yml?label=Publish%20package&logo=github)](https://github.com/xkid1/multipart/actions/workflows/publish.yml)
+[![npm package version](https://img.shields.io/npm/v/@xkid1/multipart?label=npm&color=orange)](https://www.npmjs.com/package/@xkid1/multipart)
+[![npm user: xkid1](https://img.shields.io/badge/npm-xkid1-CB3837?logo=npm)](https://www.npmjs.com/~xkid1)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+[![Node.js 18 | 20 | 22 | 24 | 26](https://img.shields.io/badge/Node.js-18%20%7C%2020%20%7C%2022%20%7C%2024%20%7C%2026-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Express 4 | 5](https://img.shields.io/badge/Express-4%20%7C%205-000000?logo=express&logoColor=white)](https://expressjs.com)
+[![NestJS 11](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com)
+[![TypeScript types included](https://img.shields.io/badge/TypeScript-types%20included-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![AWS S3 storage](https://img.shields.io/badge/AWS-S3-FF9900)](https://aws.amazon.com/s3/)
+[![Azure Blob Storage](https://img.shields.io/badge/Azure-Blob%20Storage-0078D4)](https://azure.microsoft.com/products/storage/blobs)
+[![Module formats: ESM | CJS](https://img.shields.io/badge/module-ESM%20%7C%20CJS-informational)](#compatibility)
 
 A `multipart/form-data` parser for Node.js, written in TypeScript with **zero runtime
 dependencies**. Includes Express and NestJS middleware, plus storage helpers for the
@@ -30,6 +44,22 @@ Then install only the SDKs for the integrations you use:
 | NestJS              | `@nestjs/common` (Express platform)                                       |
 | AWS S3              | `@aws-sdk/client-s3` (+ `@aws-sdk/s3-request-presigner` for signed URLs) |
 | Azure Blob Storage  | `@azure/storage-blob`                                                     |
+
+## Compatibility
+
+Every pull request runs the [end-user suite](./e2e/README.md) against the packed npm
+tarball on each of these:
+
+| Runtime / framework | Tested versions                                     | Notes                                       |
+| ------------------- | --------------------------------------------------- | ------------------------------------------- |
+| Node.js             | 18, 20, 22, 24, 26                                  | npm and pnpm installs                       |
+| Plain Node.js       | `http.createServer` + `parseMultipartRequest`       | no framework needed                         |
+| Express             | 4.x, 5.x                                            | `@xkid1/multipart/middleware/express`       |
+| NestJS              | 11.x (Express platform)                             | Node 20+ (a NestJS 11 requirement)          |
+| TypeScript          | `node16`, `bundler`, `node10` resolution            | types included for ESM and CJS              |
+| Module formats      | ESM (`import`) and CommonJS (`require`)             | separate builds and type declarations       |
+| AWS S3              | `@aws-sdk/client-s3` v3                             | tested against S3Mock                       |
+| Azure Blob Storage  | `@azure/storage-blob` v12                           | tested against Azurite                      |
 
 ## Express
 
@@ -249,8 +279,9 @@ yarn check   # format, lint, typecheck, tests with coverage, build
 yarn e2e     # test the packed tarball as an end user would (see e2e/README.md)
 ```
 
-CI runs the end-user suite on Node 18, 20, 22, 24 and 26 with npm, plus pnpm, against
-Express 4 and 5, NestJS 11, and S3/Azure emulators.
+Pull requests can only be merged once `yarn lint`, `yarn typecheck`, `yarn test` and
+`yarn e2e` pass in CI. The end-user suite runs on Node 18, 20, 22, 24 and 26 with npm,
+plus pnpm, against Express 4 and 5, NestJS 11, and S3/Azure emulators.
 
 See [Contributing.md](./Contributing.md) for guidelines and [CHANGELOG.md](./CHANGELOG.md)
 for release notes.
