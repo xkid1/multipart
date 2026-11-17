@@ -1,124 +1,56 @@
-# Accessibility Statement
+# Accessibility
 
-## Overview
+`@xkid1/multipart` is a server-side library with no user interface. For this project,
+accessibility means that its **documentation**, **error messages** and **developer
+tooling** work for everyone, including people using screen readers, magnifiers,
+keyboard-only workflows, or translation tools.
 
-`@xkid1/multipart` is a backend library for parsing multipart form-data. As a server-side, non-visual library, it does not directly provide user interface elements. However, we are committed to ensuring the library and all associated documentation are as accessible as possible.
+## What we do
 
-## Documentation Accessibility
+### Documentation
 
-### Website & README
-- **Semantic HTML**: Repository documentation uses clear semantic structure
-- **Readable Text**: High contrast, sans-serif fonts in documentation
-- **Logical Heading Structure**: H1 → H2 → H3 hierarchy for document navigation
-- **Code Examples**: Syntax highlighting with sufficient color contrast
-- **Links**: Descriptive link text (avoid "click here" patterns)
+- Headings follow a logical order (one H1, then H2 → H3), so screen-reader users can
+  navigate by heading.
+- Code samples are in fenced blocks with a language, so they render as code and can be
+  copied as text. Content is never shown only as an image of code.
+- Badges and images have alt text that states what they show (for example "Node.js 18 | 20 |
+  22 | 24 | 26"). Badges duplicate information that is also in the text.
+- Tables are used for tabular data only, and each has a header row.
+- Links describe their destination; we avoid "click here".
+- Plain, consistent language: technical terms are used the same way throughout, and we
+  avoid idioms that translate poorly.
 
-### API Documentation
-- **JSDoc Comments**: All exported functions have detailed JSDoc comments
-- **Type Definitions**: Complete TypeScript type information for IDE support
-- **Error Messages**: Clear, actionable error messages to aid debugging
-- **Examples**: Multiple usage examples in docs for different use cases
+### Error messages and API
 
-## Code & Development
+- Errors are plain text with a stable `code` and an HTTP `statusCode`
+  (see [Errors](./README.md#errors)), so they can be read, searched and handled without
+  relying on color or formatting.
+- Exported functions have JSDoc, so editors and screen readers can announce
+  parameter and return descriptions.
 
-### Source Code
-- **Type Safety**: Full TypeScript strict mode prevents runtime errors
-- **Clear Naming**: Self-documenting variable and function names
-- **Comments**: Non-obvious logic is explained with comments
-- **ESLint Rules**: Security and best-practice linting for code quality
+### Tooling
 
-### Testing
-- **Comprehensive Test Suite**: Vitest with high coverage to catch regressions
-- **Test Names**: Descriptive test names that explain expected behavior
-- **Error Scenarios**: Tests cover edge cases and error conditions
+- Everything works from a terminal with the keyboard. No step requires a GUI.
+- The logger only adds color in an interactive terminal and respects
+  [`NO_COLOR`](https://no-color.org); the end-user test runner does the same.
+  Status is always written as text (`PASS`, `FAIL`, `SKIP`), never shown by color alone.
+- Issue and pull request templates use labeled form fields.
 
-## CLI & Build Tools
+## Known gaps
 
-### Commands
-All development commands are documented:
-```bash
-yarn build       # Build the library
-yarn test        # Run tests
-yarn lint        # Check code quality
-yarn typecheck   # Type check without emitting
-yarn format      # Auto-format code
-```
+- Documentation is English-only. Translations are welcome.
+- There are no diagrams yet. If we add any, they will have a text equivalent.
+- We haven't done a formal audit against a standard such as WCAG. The practices above
+  are what we follow, not a claim of conformance.
 
-### Error Output
-- **Clear Messages**: Build/test failures include helpful context
-- **Line Numbers**: Error references include file and line numbers
-- **Stack Traces**: Full stack traces for debugging
+## Reporting a barrier
 
-## Dependency Management
+If something in the docs, error output or tooling is hard to use with your setup, please
+[open an issue](https://github.com/xkid1/multipart/issues/new/choose) using the
+**Question or other request** form. Tell us:
 
-### Zero External Dependencies
-- No external libraries to evaluate for accessibility
-- Smaller bundle size, faster download, reduced complexity
-- All functionality built on Node.js core APIs (Buffer, Streams, etc.)
+- where the barrier is (page, command, or message);
+- what you expected and what happened;
+- your assistive technology or setup, if you're comfortable sharing it.
 
-## Language & Terminology
-
-- **Plain Language**: Documentation avoids unnecessary jargon
-- **Consistent Terms**: Technical terms are used consistently
-- **Abbreviations**: Spelled out on first use (e.g., "RFC 2388 (Request for Comments)")
-- **International**: No region-specific references; standards are global
-
-## Keyboard Navigation & Automation
-
-### GitHub Integration
-- **Issue Templates**: Structured templates guide bug and feature reporting
-- **CI/CD**: Automated checks ensure code quality
-- **PR Reviews**: Clear review requirements and status checks
-
-### Development Environment
-- Full support for terminal-based development
-- Can be integrated into any IDE or text editor
-- No GUI requirements; works with keyboard-only workflows
-
-## Known Limitations
-
-1. **Visual Examples**: Repository doesn't include visual diagrams (future improvement)
-2. **Multi-Language Docs**: Currently English-only (contribution welcome)
-3. **Interactive Demos**: Library is code-only; no interactive playground
-
-## Accessibility Testing
-
-We test accessibility in:
-- **Code Quality**: ESLint with accessibility-aware rules
-- **Type Safety**: TypeScript strict mode catches potential issues
-- **Documentation**: Markdown files validated for structure and links
-- **CI/CD**: All checks run on every commit
-
-## Feedback & Improvements
-
-If you encounter accessibility barriers:
-1. Review [SECURITY.md](./SECURITY.md) for reporting guidelines
-2. Open an [issue](https://github.com/xkid1/multipart/issues) describing the barrier
-3. Suggest improvements in the issue or via pull request
-
-Include:
-- Description of the accessibility barrier
-- Affected area (code, docs, tools)
-- Suggested solution (if any)
-- Your assistive technology (if applicable)
-
-## Standards & References
-
-This accessibility statement adheres to:
-- **WCAG 2.1**: Web Content Accessibility Guidelines
-- **Section 508**: U.S. Federal Accessibility Requirements
-- **EN 301 549**: European Accessibility Standard
-
-## Continuous Improvement
-
-Accessibility is an ongoing commitment:
-- Regular review of documentation and tooling
-- Community feedback and contributions
-- Updates to reflect best practices
-- Testing with diverse workflows and tools
-
----
-
-**Last Updated**: November 2026
-
-For questions or accessibility-related requests, please open an [issue](https://github.com/xkid1/multipart/issues) or contact the maintainers.
+Accessibility issues are treated as bugs.
