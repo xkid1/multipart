@@ -12,13 +12,14 @@ name: Publish package
 # the workflow (or dispatching it manually with the tag) safely finishes a release
 # that failed halfway.
 #
-# npm authentication, in order of preference:
-#   1. Trusted publishing (OIDC): no secret needed. Configure it on npmjs.com under
-#      the package's Settings → Trusted publisher (GitHub Actions, xkid1/multipart,
-#      publish.yml). Provenance is added automatically.
-#   2. NPM_TOKEN repository secret (granular token, "Read and write (publish and
-#      stage)", "Bypass 2FA"). Needed for the very first publish, because trusted
-#      publishing can only be configured once the package exists on npm.
+# npm authentication: trusted publishing (OIDC) only, no token or secret.
+#   - npmjs.com → @xkid1/multipart → Settings → Trusted Publisher:
+#     GitHub Actions, xkid1 / multipart, publish.yml, "Allow npm publish".
+#   - Publishing access is "disallow bypass 2fa tokens", so npm rejects tokens;
+#     only this workflow (via `id-token: write`) can publish.
+#   - Provenance is attached automatically.
+#   - Renaming this file, or moving the publish job to another workflow, breaks
+#     publishing until the trusted publisher on npm is updated to match.
 
 on:
   push:
@@ -140,10 +141,20 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@xkid1'
 
+      # Trusted publishing needs npm >= 11.5.1; fail early with a clear message
+      # instead of an authentication error from npm publish.
+      - name: Check npm supports trusted publishing
+        run: |
+          node -e '
+            const [maj, min, pat] = process.argv[1].split(".").map(Number);
+            const ok = maj > 11 || (maj === 11 && (min > 5 || (min === 5 && pat >= 1)));
+            if (!ok) { console.error(`npm ${process.argv[1]} is too old for trusted publishing (needs >= 11.5.1)`); process.exit(1); }
+            console.log(`npm ${process.argv[1]} supports trusted publishing`);
+          ' "$(npm --version)"
+
+      # Authenticates through OIDC (id-token: write); no NODE_AUTH_TOKEN is set.
       - name: Publish to npm
         env:
-          # Used only if trusted publishing isn't configured for the package yet.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           REGISTRY: https://registry.npmjs.org
         run: |
           if npm view "$NAME@$VERSION" version --registry "$REGISTRY" "--@xkid1:registry=$REGISTRY" >/dev/null 2>&1; then
