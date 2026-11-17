@@ -1,69 +1,78 @@
 # Security Policy
 
-## Reporting Security Vulnerabilities
+## Reporting a vulnerability
 
-We take security seriously. If you believe you have found a security vulnerability in `@xkid1/multipart`, **please do not open a public GitHub issue**. Instead, please report the vulnerability responsibly by emailing us with details.
+**Please don't report security issues in public GitHub issues, discussions or pull requests.**
 
-### How to Report
+Report them privately through GitHub:
+[**Report a vulnerability**](https://github.com/xkid1/multipart/security/advisories/new)
+(repository **Security** tab → **Report a vulnerability**).
 
-When reporting a security vulnerability, please include:
-- A description of the vulnerability and its potential impact
-- Steps to reproduce the issue (if applicable)
-- The affected version(s) of the library
-- Any suggested remediation or fix (if available)
+Please include:
 
-We will acknowledge receipt of your report within 48 hours and provide an expected timeline for a fix.
+- the affected version(s) and entry point (parser, Express, NestJS, local/S3/Azure storage);
+- a description of the issue and its impact;
+- a minimal reproduction, such as a request body or script (no real credentials, please);
+- a suggested fix, if you have one.
 
-## Security Considerations
+What to expect:
 
-### Zero-Dependency Design
-This library maintains **zero runtime dependencies**, which significantly reduces the attack surface and dependency-related vulnerabilities. All parsing logic is implemented in pure TypeScript.
+- an acknowledgement within **48 hours**, and an expected timeline for a fix;
+- coordinated disclosure: a fix is released before details are published, with a GitHub
+  Security Advisory (and a CVE where appropriate) crediting you unless you prefer otherwise.
 
-### Buffer Handling
-The library performs direct byte-level operations on Node.js `Buffer` objects. Users should ensure:
-- Input buffers come from trusted sources
-- Proper size limits are enforced on uploaded content
-- Memory constraints are considered when processing large multipart payloads
+## Supported versions
 
-### Encoding Validation
-The built-in encoding detector validates UTF-8, UTF-16, UTF-32, ASCII, and Latin-1 sequences. Binary data is handled safely without conversion assumptions. Encoding detection includes BOM analysis and multi-byte validation to prevent encoding-based injection vectors.
+The package is pre-1.0. Security fixes are released for the **latest minor version** only.
 
-### Input Validation
-When parsing multipart form data:
-- Validate file sizes and count before processing
-- Implement rate limiting on multipart uploads
-- Validate file extensions and MIME types after parsing
-- Handle malformed boundaries and headers gracefully
+| Version | Supported |
+| ------- | --------- |
+| 0.2.x   | ✅        |
+| < 0.2   | ❌        |
 
-## Supported Versions
+## Scope
 
-| Version | Status        | Security Updates |
-|---------|---------------|-----------------|
-| 0.2.x   | Current       | Yes             |
-| 0.1.x   | Maintenance   | Critical only   |
+In scope: anything in this package that a malicious **request** or **filename** can trigger,
+for example:
 
-Only the current and previous minor versions receive security updates.
+- crashes, hangs or unbounded memory/CPU use while reading or parsing a body;
+- limits (`maxSize`, `fileSize`, `fieldSize`, `maxFiles`, `maxFields`, `allowedMimeTypes`)
+  that can be bypassed;
+- prototype pollution through field names;
+- path traversal or file overwrites in local storage;
+- storage helpers granting more access than documented (for example SAS URL permissions).
 
-## Responsible Disclosure
+Out of scope: vulnerabilities in Express, NestJS, the AWS or Azure SDKs, or Node.js itself
+(report those upstream), and insecure application configuration, such as disabling limits.
 
-We practice responsible disclosure:
-- We will not publicly disclose the vulnerability until a fix is available
-- We will credit the reporter (unless anonymity is preferred)
-- We will work with you to determine a reasonable timeline for disclosure
-- Security patches will be released as soon as possible
+## What the library does for you
 
-## Compliance & Standards
+- **Limits by default**: a 100 MiB body, 50 MiB per file, 10 MiB per field, 100 files and
+  1000 fields. The body limit is enforced **while streaming**, so an oversized request is
+  rejected without being fully read.
+- **No prototype pollution**: results have a `null` prototype, so a field named
+  `__proto__` or `constructor` is plain data.
+- **Safe local storage**: client filenames are reduced to a basename (no `../`, no
+  absolute paths, no control characters), all paths are checked to stay inside the
+  configured directory, and existing files are never silently overwritten.
+- **Read-only SAS URLs by default** for Azure; S3 objects get no ACL unless you set one.
+- **No secrets in logs**: the `debug` option logs field names and sizes, never values.
+- **Zero runtime dependencies** in the core package.
 
-This library follows Node.js and web security best practices:
-- Secure parsing of RFC 2388 (multipart form data) and RFC 7578
-- Compliance with OWASP guidelines for input validation
-- Memory-safe buffer operations using Node.js Buffer API
-- No use of unsafe functions or deprecated APIs
+## What you still need to do
 
-## Version Support
-
-For version support and security patching timelines, see [package.json](./package.json).
-
-## Questions?
-
-If you have questions about this security policy or need clarification, please contact the maintainers through the appropriate channels.
+- **Don't trust `mimeType` or `name`.** Both come from the client. `allowedMimeTypes` checks
+  the type the client *declared*, not the file's content. If the type matters, check the
+  content itself (for example its magic bytes), and never use the client filename as a
+  path without the storage helpers.
+- **Serve uploads safely.** Files are stored with an `inline` Content-Disposition by default.
+  If you serve user uploads from your own domain, an uploaded HTML or SVG file can run
+  script there (stored XSS). Serve them from a separate domain, or set
+  `contentDisposition: 'attachment'` and `X-Content-Type-Options: nosniff`.
+- **Size limits to your memory.** Bodies are buffered in memory up to `maxSize`, so
+  concurrent uploads × `maxSize` must fit in memory. Lower `maxSize` to what you actually
+  need, and add authentication and rate limiting in front of upload routes.
+- **Keep uploads out of executable paths.** Don't point local storage at a directory your
+  web server executes or serves as code.
+- **Protect storage credentials.** Use IAM roles or managed identity where you can, keep
+  buckets and containers private, and give presigned and SAS URLs short expiry times.

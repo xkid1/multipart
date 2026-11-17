@@ -1,42 +1,97 @@
 name: Bug report
-description: Report a reproducible defect in the library.
+description: Report a reproducible problem with @xkid1/multipart.
 title: '[Bug]: '
 labels:
   - bug
 body:
   - type: markdown
     attributes:
-      value: Before submitting, please check whether this issue has already been reported.
+      value: |
+        Thanks for taking the time to report a problem.
+
+        **Security issue?** Don't open a public issue. Report it privately instead; see [SECURITY.md](https://github.com/xkid1/multipart/blob/main/SECURITY.md).
+
+        Please check [existing issues](https://github.com/xkid1/multipart/issues?q=is%3Aissue) first.
+
   - type: input
     id: version
     attributes:
       label: Package version
-      description: Which version of @xkid1/reed-solomon-algorithm are you using?
-      placeholder: 0.1.0
+      description: Run `npm ls @xkid1/multipart`.
+      placeholder: 0.2.0
     validations:
       required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      multiple: true
+      options:
+        - Core parser (multipart / parseMultipartWithDuplicates)
+        - Plain Node.js (parseMultipartRequest)
+        - Express middleware
+        - NestJS middleware
+        - Local storage
+        - AWS S3 storage
+        - Azure Blob storage
+        - TypeScript types
+        - Installation / packaging (ESM, CommonJS, exports)
+        - Not sure
+    validations:
+      required: true
+
   - type: textarea
     id: reproduction
     attributes:
-      label: Reproduction
-      description: Include a minimal code sample and input data.
+      label: Minimal reproduction
+      description: |
+        The smallest code that shows the problem. If it depends on the request, include
+        how you send it (curl command, browser form, or `fetch` + `FormData`).
+        Please remove secrets such as storage keys and connection strings.
       render: typescript
     validations:
       required: true
+
   - type: textarea
     id: expected
     attributes:
       label: Expected behavior
     validations:
       required: true
+
   - type: textarea
     id: actual
     attributes:
       label: Actual behavior
+      description: Include the full error message, `error.code` / `statusCode` if present, and stack trace.
     validations:
       required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Run `node --version`.
+      placeholder: v22.11.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module-format
+    attributes:
+      label: Module format
+      options:
+        - ESM (import)
+        - CommonJS (require)
+        - Not sure
+    validations:
+      required: true
+
   - type: textarea
     id: environment
     attributes:
-      label: Runtime and environment
-      description: Include the Node.js version and operating system.
+      label: Other versions and environment
+      description: Framework and SDK versions (express, @nestjs/common, @aws-sdk/client-s3, @azure/storage-blob), TypeScript version and `moduleResolution`, OS, and package manager.
+      placeholder: |
+        express 5.1.0, typescript 5.9 (moduleResolution: node16), npm 10, Ubuntu 24.04
