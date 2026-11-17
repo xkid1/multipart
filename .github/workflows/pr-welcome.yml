@@ -17,9 +17,15 @@ jobs:
   welcome:
     runs-on: ubuntu-latest
     steps:
+      # v3 renamed the inputs to snake_case; repo_token defaults to github.token.
       - name: Welcome first-time contributors
-        uses: actions/first-interaction@v1
+        uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ github.token }}
-          issue-message: 'Thanks for opening your first issue. We will take a look soon.'
-          pr-message: 'Thanks for opening your first pull request. We will review it soon.'
+          issue_message: >-
+            Thanks for opening your first issue! A maintainer will take a look soon.
+            If it's a bug, a minimal reproduction (request headers, a sample body, and
+            the storage adapter you use) helps us fix it faster.
+          pr_message: >-
+            Thanks for your first pull request! Please make sure `yarn check` passes
+            locally and the PR title follows Conventional Commits (for example
+            `fix(parser): handle CRLF in boundaries`). A maintainer will review it soon.

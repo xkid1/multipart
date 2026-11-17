@@ -22,6 +22,16 @@
     "type": "git",
     "url": "git+https://github.com/xkid1/multipart.git"
   },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/xkid1"
+    },
+    {
+      "type": "buymeacoffee",
+      "url": "https://buymeacoffee.com/elmeralluaj"
+    }
+  ],
   "license": "MIT",
   "author": "xkid1",
   "type": "module",
@@ -140,7 +150,8 @@
     "e2e": "node e2e/run.mjs",
     "e2e:emulators": "bash e2e/emulators.sh",
     "e2e:matrix": "bash e2e/docker-matrix.sh",
-    "check": "yarn format:check && yarn lint && yarn typecheck && yarn coverage && yarn build",
+    "check:deps": "node scripts/check-zero-deps.mjs",
+    "check": "yarn check:deps && yarn format:check && yarn lint && yarn typecheck && yarn coverage && yarn build",
     "prepack": "yarn build"
   },
   "devDependencies": {
