@@ -1,56 +1,60 @@
 import { EventEmitter } from 'node:events';
+
+import { HttpException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@nestjs/common', () => {
-  class BadRequestException extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'BadRequestException';
-    }
-  }
-
-  return {
-    BadRequestException,
-  };
-});
-
-import { MultipartNestjs } from './index';
+import { createMultipartNestjs, MultipartNestjs, multipartNestjs } from './index.js';
 
 describe('nestjs middleware', () => {
   const createMockReq = (headers: Record<string, string | string[]> = {}) => {
     const emitter = new EventEmitter() as any;
     emitter.headers = headers;
     emitter.method = 'POST';
-    emitter.pause = vi.fn();
+    emitter.resume = vi.fn();
     return emitter;
   };
 
   const createMockRes = () => ({}) as any;
 
-  it('should ignore non-multipart requests', async () => {
-    const req = createMockReq({ 'content-type': 'application/json' });
-    const res = createMockRes();
-    const next = vi.fn();
-
-    const middleware = new MultipartNestjs();
-    await middleware.use(req, res, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(next).toHaveBeenCalledWith();
+  const multipartHeaders = (boundary: string) => ({
+    'content-type': `multipart/form-data; boundary=${boundary}`,
   });
 
-  it('should pass BadRequestException when boundary is missing', async () => {
-    const req = createMockReq({ 'content-type': 'multipart/form-data' });
-    const res = createMockRes();
+  const fileBody = (boundary: string, mimeType = 'text/plain') =>
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="f"; filename="a.txt"\r\nContent-Type: ${mimeType}\r\n\r\nTOOBIG\r\n--${boundary}--\r\n`,
+    );
+
+  /** Run the middleware on a body and return what it passed to next(). */
+  const run = async (
+    middleware: { use: MultipartNestjs['use'] },
+    req: any,
+    chunks: Buffer[] = [],
+  ) => {
     const next = vi.fn();
-
-    const middleware = new MultipartNestjs();
-    await middleware.use(req, res, next);
-
+    const promise = middleware.use(req, createMockRes(), next);
+    for (const chunk of chunks) req.emit('data', chunk);
+    req.emit('end');
+    await promise;
     expect(next).toHaveBeenCalledTimes(1);
-    const err = next.mock.calls[0][0];
-    expect(err).toBeInstanceOf(Error);
+    return next.mock.calls[0][0];
+  };
+
+  it('should ignore non-multipart requests', async () => {
+    const req = createMockReq({ 'content-type': 'application/json' });
+    expect(await run(new MultipartNestjs(), req)).toBeUndefined();
+  });
+
+  it('should pass a 400 HttpException when boundary is missing', async () => {
+    const err = await run(
+      new MultipartNestjs(),
+      createMockReq({ 'content-type': 'multipart/form-data' }),
+    );
+
+    expect(err).toBeInstanceOf(HttpException);
+    expect(err.getStatus()).toBe(400);
     expect(err.message).toContain('No boundary found');
+    expect(err.getResponse()).toMatchObject({ error: 'NO_BOUNDARY' });
   });
 
   it('should successfully parse valid multipart body', async () => {
@@ -68,27 +72,18 @@ describe('nestjs middleware', () => {
       `--${boundary}--`,
       '',
     ].join('\r\n');
+    const req = createMockReq(multipartHeaders(boundary));
 
-    const req = createMockReq({
-      'content-type': `multipart/form-data; boundary=${boundary}`,
-    });
-    const res = createMockRes();
-    const next = vi.fn();
-
-    const middleware = new MultipartNestjs();
-    const promise = middleware.use(req, res, next);
-
-    req.emit('data', Buffer.from(bodyParts));
-    req.emit('end');
-
-    await promise;
-
-    expect(next).toHaveBeenCalledTimes(1);
+    expect(
+      await run(new MultipartNestjs(), req, [Buffer.from(bodyParts)]),
+    ).toBeUndefined();
     expect(req.fields.title).toBe('NestJS Multipart');
     expect(req.files.file.name).toBe('upload.txt');
+    expect(req.files.file.buffer.toString()).toBe('Uploaded file content');
+    expect(req.body.title).toBe('NestJS Multipart');
   });
 
-  it('should handle duplicate fields and duplicate files in nestjs middleware', async () => {
+  it('should handle duplicate fields and duplicate files', async () => {
     const boundary = 'nest-duplicates';
     const bodyParts = [
       `--${boundary}`,
@@ -112,87 +107,89 @@ describe('nestjs middleware', () => {
       `--${boundary}--`,
       '',
     ].join('\r\n');
+    const req = createMockReq(multipartHeaders(boundary));
 
-    const req = createMockReq({
-      'content-type': `multipart/form-data; boundary=${boundary}`,
-    });
-    const res = createMockRes();
-    const next = vi.fn();
+    await run(new MultipartNestjs(), req, [Buffer.from(bodyParts)]);
 
-    const middleware = new MultipartNestjs();
-    const promise = middleware.use(req, res, next);
-
-    req.emit('data', Buffer.from(bodyParts));
-    req.emit('end');
-
-    await promise;
-
-    expect(next).toHaveBeenCalledTimes(1);
     expect(req.fields.tag).toEqual(['nest', 'express']);
-    expect(Array.isArray(req.files.docs)).toBe(true);
     expect(req.files.docs).toHaveLength(2);
   });
 
-  it('should pass BadRequestException on size exceeded', async () => {
-    const boundary = 'nest-limit';
-    const req = createMockReq({
-      'content-type': `multipart/form-data; boundary=${boundary}`,
-    });
-    const res = createMockRes();
-    const next = vi.fn();
+  it('should pass a 413 HttpException when the body is too large', async () => {
+    const err = await run(
+      new MultipartNestjs({ maxSize: 10 }),
+      createMockReq(multipartHeaders('l')),
+      [Buffer.alloc(30)],
+    );
 
-    const middleware = new MultipartNestjs({ maxSize: 10 });
-    const promise = middleware.use(req, res, next);
-
-    req.emit('data', Buffer.alloc(30));
-    req.emit('end');
-
-    await promise;
-
-    expect(next).toHaveBeenCalledTimes(1);
-    const err = next.mock.calls[0][0];
+    expect(err.getStatus()).toBe(413);
     expect(err.message).toContain('Request body exceeds size limit');
   });
 
-  it('should pass BadRequestException on parsing error in end event', async () => {
-    const boundary = 'nest-malformed';
-    const body = Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="f"; filename="a.txt"\r\nContent-Type: text/plain\r\n\r\nTOOBIG\r\n--${boundary}--\r\n`,
+  it('should pass a 413 HttpException when a file is too large', async () => {
+    const boundary = 'nest-file';
+    const err = await run(
+      new MultipartNestjs({ fileSize: 1 }),
+      createMockReq(multipartHeaders(boundary)),
+      [fileBody(boundary)],
     );
-    const req = createMockReq({
-      'content-type': `multipart/form-data; boundary=${boundary}`,
-    });
-    const res = createMockRes();
-    const next = vi.fn();
 
-    const middleware = new MultipartNestjs({ fileSize: 1 });
-    const promise = middleware.use(req, res, next);
-
-    req.emit('data', body);
-    req.emit('end');
-
-    await promise;
-
-    expect(next).toHaveBeenCalledTimes(1);
-    const err = next.mock.calls[0][0];
-    expect(err).toBeInstanceOf(Error);
+    expect(err.getStatus()).toBe(413);
+    expect(err.getResponse()).toMatchObject({ error: 'LIMIT_FILE_SIZE' });
   });
 
-  it('should handle init errors in nestjs middleware', async () => {
-    const req = createMockReq({
-      'content-type': 'multipart/form-data; boundary=test',
-    });
+  it('should pass a 415 HttpException for a disallowed MIME type', async () => {
+    const boundary = 'nest-mime';
+    const err = await run(
+      new MultipartNestjs({ allowedMimeTypes: ['image/*'] }),
+      createMockReq(multipartHeaders(boundary)),
+      [fileBody(boundary, 'application/x-msdownload')],
+    );
+
+    expect(err.getStatus()).toBe(415);
+  });
+
+  it('should wrap unexpected errors in a 400 HttpException', async () => {
+    const req = createMockReq(multipartHeaders('test'));
     req.on = vi.fn().mockImplementation(() => {
       throw new Error('Attach failed');
     });
-    const res = createMockRes();
     const next = vi.fn();
 
-    const middleware = new MultipartNestjs();
-    await middleware.use(req, res, next);
+    await new MultipartNestjs().use(req, createMockRes(), next);
 
-    expect(next).toHaveBeenCalledTimes(1);
     const err = next.mock.calls[0][0];
+    expect(err).toBeInstanceOf(HttpException);
+    expect(err.getStatus()).toBe(400);
     expect(err.message).toBe('Attach failed');
+  });
+
+  it('createMultipartNestjs should bake options into a class Nest can instantiate', async () => {
+    const Configured = createMultipartNestjs({ maxSize: 10 });
+    const err = await run(new Configured(), createMockReq(multipartHeaders('c')), [
+      Buffer.alloc(30),
+    ]);
+
+    expect(err.getStatus()).toBe(413);
+  });
+
+  it('multipartNestjs should work as functional middleware', async () => {
+    const boundary = 'fn';
+    const req = createMockReq(multipartHeaders(boundary));
+    const middleware = multipartNestjs();
+    const next = vi.fn();
+
+    const promise = middleware(req, createMockRes(), next);
+    req.emit(
+      'data',
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="a"\r\n\r\n1\r\n--${boundary}--\r\n`,
+      ),
+    );
+    req.emit('end');
+    await promise;
+
+    expect(next).toHaveBeenCalledWith();
+    expect(req.fields.a).toBe('1');
   });
 });

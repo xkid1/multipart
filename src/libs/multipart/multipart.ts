@@ -1,74 +1,29 @@
 import {
-  encoding,
-  extractExtension,
-  extractFilename,
-  extractMimeType,
-  extractName,
-  extractPart,
-  findNextBoundary,
-  parseHeaders,
-  shouldSkipPart,
-  splitPartSections,
-} from '@utils';
+  createFormRecord,
+  isFilePart,
+  readFormParts,
+  toFieldValue,
+  toFileData,
+} from './form-parts.js';
 
-import type { FileData } from '@types';
+import type { FileData } from '../../types/index.js';
 
 /**
- * Parse multipart form-data from a buffer
+ * Parse a multipart/form-data body into a flat object.
+ *
+ * When a field name repeats, the last value wins. Use
+ * {@link parseMultipartWithDuplicates} to keep every value and to enforce size
+ * and count limits; prefer it for untrusted input.
+ *
  * @param body - The raw multipart body buffer
- * @param boundary - The boundary delimiter string (without dashes)
- * @returns Parsed form data with field names mapped to FileData or string values
+ * @param boundary - The boundary from the Content-Type header (without dashes)
+ * @returns Field names mapped to a string (text field) or {@link FileData} (file)
  */
 const multipart = (body: Buffer, boundary: string): Record<string, FileData | string> => {
-  const data: Record<string, FileData | string> = {};
+  const data = createFormRecord<FileData | string>();
 
-  const boundaryBuffer = Buffer.from(`--${boundary}`);
-  const boundaryEndBuffer = Buffer.from(`--${boundary}--`);
-
-  let boundaryIndex = findNextBoundary(body, boundaryBuffer, 0);
-
-  while (boundaryIndex !== -1) {
-    const { part, nextBoundaryIndex } = extractPart(body, boundaryBuffer, boundaryIndex);
-
-    if (shouldSkipPart(part, boundaryEndBuffer)) {
-      if (nextBoundaryIndex === -1) break;
-      boundaryIndex = nextBoundaryIndex;
-      continue;
-    }
-
-    const sections = splitPartSections(part);
-    if (!sections) {
-      if (nextBoundaryIndex === -1) break;
-      boundaryIndex = nextBoundaryIndex;
-      continue;
-    }
-
-    const { headerSection, bodySection } = sections;
-    const { contentDisposition, contentType } = parseHeaders(headerSection);
-
-    if (contentDisposition) {
-      const name = extractName(contentDisposition);
-      if (name) {
-        const filename = extractFilename(contentDisposition);
-        if (filename && contentType) {
-          const mimetype = extractMimeType(contentType);
-          const extension = extractExtension(filename);
-          data[name] = {
-            name: filename,
-            mimeType: mimetype,
-            size: bodySection.byteLength,
-            encoding: encoding(bodySection),
-            extension,
-            buffer: bodySection,
-          };
-        } else {
-          data[name] = bodySection.toString().trim();
-        }
-      }
-    }
-
-    if (nextBoundaryIndex === -1) break;
-    boundaryIndex = nextBoundaryIndex;
+  for (const part of readFormParts(body, boundary)) {
+    data[part.name] = isFilePart(part) ? toFileData(part) : toFieldValue(part);
   }
 
   return data;

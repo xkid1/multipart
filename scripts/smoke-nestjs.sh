@@ -55,14 +55,14 @@ trap cleanup EXIT
 # Step 1: Verify library is built
 echo -e "\n${YELLOW}=== Step 1: Verifying Library Build ===${NC}"
 
-if [ ! -f "${PROJECT_ROOT}/dist/index.js" ]; then
+if [ ! -f "${PROJECT_ROOT}/dist/esm/index.js" ]; then
   echo -e "${YELLOW}ℹ Building library...${NC}"
   cd "${PROJECT_ROOT}"
   yarn build
   cd - > /dev/null
 fi
 
-if [ -f "${PROJECT_ROOT}/dist/index.js" ]; then
+if [ -f "${PROJECT_ROOT}/dist/esm/index.js" ]; then
   echo -e "${GREEN}✓ Library built successfully${NC}"
 else
   echo -e "${RED}✗ Library build failed${NC}"
@@ -207,7 +207,7 @@ echo -e "${GREEN}✓ Created upload controller${NC}"
 # Create main application file with NestJS-pattern routing
 cat > "${TEST_DIR}/src/main.mjs" << 'MAINEOF'
 import express from 'express';
-import { multipart } from '../../dist/index.js';
+import { multipart } from '../../dist/esm/index.js';
 import { UploadController } from './upload.controller.mjs';
 
 const app = express();

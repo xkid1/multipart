@@ -1,0 +1,72 @@
+name: End-user tests
+
+# Packs the package as `npm publish` would and tests the tarball in fresh consumer
+# projects on every supported Node.js version: Node http, Express 4/5, NestJS,
+# TypeScript resolution modes, and S3/Azure against local emulators. See e2e/README.md.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  pack:
+    name: Pack tarball
+    runs-on: ubuntu-latest
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: npm pack (runs prepack → yarn build)
+        id: pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/pack"
+          TARBALL=$(npm pack --pack-destination "$RUNNER_TEMP/pack" --loglevel=error | tail -1)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-tarball
+          path: ${{ runner.temp }}/pack/*.tgz
+          retention-days: 7
+
+  e2e:
+    name: Node ${{ matrix.node }} (${{ matrix.pm }})
+    needs: pack
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22, 24, 26]
+        pm: [npm]
+        include:
+          - node: 24
+            pm: pnpm
+    steps:
+      # Only the e2e/ folder is needed; the package itself comes from the tarball.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: e2e
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-tarball
+          path: ${{ runner.temp }}/pack
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Enable pnpm
+        if: matrix.pm == 'pnpm'
+        run: corepack enable pnpm
+      - name: Start S3 and Azure emulators
+        run: bash e2e/emulators.sh up
+      - name: Run end-user suite
+        env:
+          E2E_REQUIRE_CLOUD: '1'
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+        run: node e2e/run.mjs --pm ${{ matrix.pm }} --tarball "$RUNNER_TEMP/pack/${{ needs.pack.outputs.tarball }}"
+      - name: Stop emulators
+        if: always()
+        run: bash e2e/emulators.sh down

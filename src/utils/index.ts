@@ -1,6 +1,9 @@
-export { default as encoding } from './encoding/encoding';
-export { MultiPartError } from './helpers/errors/errors';
-export { default as Logger } from './helpers/logger/logger';
-export type { LogLevel } from './helpers/logger/logger';
-export * from './parse-headers';
-export * from './parse-parts';
+export { default as encoding } from './encoding/encoding.js';
+export {
+  MultiPartError,
+  MultiPartErrorCode,
+  type MultiPartErrorCodeValue,
+} from './helpers/errors/errors.js';
+export { default as Logger, type LogLevel } from './helpers/logger/logger.js';
+export * from './parse-headers/index.js';
+export * from './parse-parts/index.js';

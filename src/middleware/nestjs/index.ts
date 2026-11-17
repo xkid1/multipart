@@ -1,27 +1,44 @@
-import type { NestMiddleware } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common';
-import type { NextFunction, Request, Response } from 'express';
+import { HttpException } from '@nestjs/common';
 
-import type { MiddlewareOptions } from '@types';
-import { parseMultipartWithDuplicates } from '../core/parse-multipart';
+import { parseMultipartRequest, toMiddlewareError } from '../shared/parse-request.js';
+
+import type { RequestLike } from '../shared/read-request-body.js';
+import type { MiddlewareOptions, MultipartRequestProperties } from '../../types/index.js';
+import type { NestMiddleware, Type } from '@nestjs/common';
+
+type NestRequest = RequestLike & MultipartRequestProperties;
+type NestNext = (error?: unknown) => void;
 
 /**
- * NestJS multipart middleware for handling file uploads
+ * Convert a parse failure into a Nest `HttpException` with the matching status
+ * (400, 413, 415, ...). The response body is
+ * `{ statusCode, message, error: <MultiPartErrorCode> }`.
+ */
+export const toNestException = (error: unknown): HttpException => {
+  const { code, message, statusCode } = toMiddlewareError(error);
+  return new HttpException({ statusCode, message, error: code }, statusCode, {
+    cause: error,
+  });
+};
+
+/**
+ * NestJS multipart/form-data middleware (Express platform).
+ *
+ * On success, sets `req.body`, `req.files` and `req.fields`. On failure, calls
+ * `next()` with an `HttpException`, so Nest's exception filters respond.
  *
  * @example
  * ```typescript
  * import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
- * import { MultipartNestjs } from '@xkid1/multipart/middleware/nestjs';
- * import { UploadController } from './upload.controller';
+ * import { MultipartNestjs, createMultipartNestjs } from '@xkid1/multipart/middleware/nestjs';
  *
- * @Module({
- *   controllers: [UploadController],
- * })
+ * @Module({ controllers: [UploadController] })
  * export class UploadModule implements NestModule {
  *   configure(consumer: MiddlewareConsumer) {
- *     consumer
- *       .apply(new MultipartNestjs())
- *       .forRoutes('/upload');
+ *     // Default limits:
+ *     consumer.apply(MultipartNestjs).forRoutes('upload');
+ *     // Custom options:
+ *     consumer.apply(createMultipartNestjs({ maxFiles: 5 })).forRoutes('avatar');
  *   }
  * }
  * ```
@@ -29,101 +46,48 @@ import { parseMultipartWithDuplicates } from '../core/parse-multipart';
 export class MultipartNestjs implements NestMiddleware {
   constructor(private readonly options: MiddlewareOptions = {}) {}
 
-  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
-    // Only process multipart/form-data requests
-    const contentTypeRaw = req.headers['content-type'];
-    const contentType = Array.isArray(contentTypeRaw)
-      ? contentTypeRaw[0]
-      : contentTypeRaw;
-    if (!contentType || !contentType.includes('multipart/form-data')) {
-      return next();
-    }
-
-    // Extract boundary from content-type header
-    const boundaryMatch = contentType.match(/boundary=([^;]+)/);
-    if (!boundaryMatch) {
-      return next(new BadRequestException('No boundary found in Content-Type header'));
-    }
-
-    const boundary = boundaryMatch[1].trim().replace(/^["']|["']$/g, '');
-
-    try {
-      // Collect the request body
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
-      const maxSize = this.options.maxSize || 104857600; // 100MB default
-      let exceeded = false;
-
-      req.on('data', (chunk: Buffer) => {
-        if (exceeded) return;
-        totalSize += chunk.length;
-        if (totalSize > maxSize) {
-          exceeded = true;
-          chunks.length = 0;
-          return next(
-            new BadRequestException(
-              `Request body exceeds size limit of ${maxSize} bytes`,
-            ),
-          );
+  use(req: NestRequest, _res: unknown, next: NestNext): Promise<void> {
+    return parseMultipartRequest(req, this.options).then(
+      (parsed) => {
+        if (parsed) {
+          req.body = parsed.body;
+          req.files = parsed.files;
+          req.fields = parsed.fields;
         }
-        chunks.push(chunk);
-      });
-
-      req.on('end', () => {
-        if (exceeded) return;
-
-        try {
-          const body = Buffer.concat(chunks);
-
-          // Parse multipart data
-          const data = parseMultipartWithDuplicates(body, boundary, this.options);
-
-          // Separate files and fields
-          const files: Record<string, any> = {};
-          const fields: Record<string, any> = {};
-
-          for (const [key, value] of Object.entries(data)) {
-            if (Array.isArray(value)) {
-              // Check if it's an array of FileData or strings
-              if (
-                value.length > 0 &&
-                typeof value[0] === 'object' &&
-                'buffer' in value[0]
-              ) {
-                files[key] = value;
-              } else {
-                fields[key] = value;
-              }
-            } else if (typeof value === 'object' && 'buffer' in value) {
-              files[key] = value;
-            } else {
-              fields[key] = value;
-            }
-          }
-
-          // Attach to request object
-          (req as any).files = files;
-          (req as any).fields = fields;
-          (req as any).body = data;
-
-          next();
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error));
-          next(new BadRequestException(err.message));
-        }
-      });
-
-      req.on('error', (error) => {
-        next(new BadRequestException(error.message));
-      });
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        return next(error);
-      }
-      const err = error instanceof Error ? error : new Error(String(error));
-      next(new BadRequestException(err.message));
-    }
+        next();
+      },
+      (error: unknown) => next(toNestException(error)),
+    );
   }
 }
 
+/**
+ * Create a middleware class with options built in, for
+ * `consumer.apply(createMultipartNestjs({ ... }))`. Nest instantiates middleware
+ * classes itself, so options can't be passed to the constructor directly.
+ */
+export const createMultipartNestjs = (options: MiddlewareOptions): Type<NestMiddleware> =>
+  class ConfiguredMultipartNestjs extends MultipartNestjs {
+    constructor() {
+      super(options);
+    }
+  };
+
+/**
+ * Functional form of the middleware, for `consumer.apply(multipartNestjs({ ... }))`
+ * or `app.use(multipartNestjs())`.
+ */
+export const multipartNestjs = (options: MiddlewareOptions = {}) => {
+  const middleware = new MultipartNestjs(options);
+  return (req: NestRequest, res: unknown, next: NestNext): Promise<void> =>
+    middleware.use(req, res, next);
+};
+
 export default MultipartNestjs;
+
+export type {
+  FileData,
+  MiddlewareError,
+  MiddlewareOptions,
+  MultipartRequestProperties,
+} from '../../types/index.js';

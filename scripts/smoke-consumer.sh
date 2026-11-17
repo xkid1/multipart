@@ -41,7 +41,7 @@ trap cleanup EXIT
 # Step 1: Verify library is built
 echo -e "\n${YELLOW}=== Step 1: Verifying Library Build ===${NC}"
 
-if [ ! -f "${PROJECT_ROOT}/dist/index.js" ]; then
+if [ ! -f "${PROJECT_ROOT}/dist/esm/index.js" ]; then
   echo -e "${RED}✗ Library not built${NC}"
   echo -e "${YELLOW}ℹ Building library...${NC}"
   cd "${PROJECT_ROOT}"
@@ -50,9 +50,9 @@ if [ ! -f "${PROJECT_ROOT}/dist/index.js" ]; then
   cd - > /dev/null
 fi
 
-if [ -f "${PROJECT_ROOT}/dist/index.js" ]; then
+if [ -f "${PROJECT_ROOT}/dist/esm/index.js" ]; then
   echo -e "${GREEN}✓ Library built successfully${NC}"
-  echo -e "  - index.js: $(stat -c%s "${PROJECT_ROOT}/dist/index.js") bytes"
+  echo -e "  - index.js: $(stat -c%s "${PROJECT_ROOT}/dist/esm/index.js") bytes"
 else
   echo -e "${RED}✗ Library build failed${NC}"
   exit 1
@@ -62,7 +62,7 @@ fi
 echo -e "\n${YELLOW}=== Step 2: Verifying Module Exports ===${NC}"
 
 EXPORT_CHECK=$(node --input-type=module -e "
-import * as multipart from '${PROJECT_ROOT}/dist/index.js';
+import * as multipart from '${PROJECT_ROOT}/dist/esm/index.js';
 console.log('multipart:', typeof multipart);
 console.log('multipart.multipart:', typeof multipart.multipart);
 console.log('multipart.encoding:', typeof multipart.encoding);
@@ -118,7 +118,7 @@ EOF
 
 # Create test consumer script
 cat > "${CONSUMER_DIR}/test.mjs" << 'TESTEOF'
-import * as multipart from '../dist/index.js';
+import * as multipart from '../dist/esm/index.js';
 
 console.log('\n=== Smoke Test: Basic Functionality ===\n');
 
@@ -215,7 +215,7 @@ echo -e "\n${YELLOW}=== Step 5: Real-World Scenario Tests ===${NC}"
 
 # Create advanced consumer test
 cat > "${CONSUMER_DIR}/advanced-test.mjs" << 'ADVEOF'
-import * as multipart from '../dist/index.js';
+import * as multipart from '../dist/esm/index.js';
 
 console.log('\n=== Advanced Tests ===\n');
 

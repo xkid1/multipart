@@ -1,17 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { AzureBlobStorage } from './azure-blob-storage.js';
 import {
   deleteFromAzureBlob,
+  existsInAzureBlob,
   getAzureBlobSasUrl,
   uploadMultipleToAzureBlob,
   uploadToAzureBlob,
-} from './azure-uploader';
+} from './azure-uploader.js';
 
 import type {
   AzureBlobContainerClientInterface,
   AzureBlobUploadConfig,
   FileData,
-} from '@types';
+} from '../../types/index.js';
 
 vi.mock('@azure/storage-blob', () => ({
   BlobSASPermissions: {
@@ -49,14 +51,13 @@ describe('azure-uploader', () => {
   ): AzureBlobContainerClientInterface => {
     const mockBlobClient = {
       url: 'https://mystorageaccount.blob.core.windows.net/documents/uploads/doc.pdf',
-      upload: vi.fn().mockResolvedValue({}),
-      getProperties: vi.fn().mockResolvedValue({
+      upload: vi.fn().mockResolvedValue({
         etag: '"az-etag"',
         lastModified: new Date('2026-01-01'),
-        accessTier: 'Hot',
         encryptionScope: 'default-scope',
       }),
       delete: vi.fn().mockResolvedValue({}),
+      exists: vi.fn().mockResolvedValue(true),
     };
 
     return {
@@ -82,8 +83,67 @@ describe('azure-uploader', () => {
       expect(result.accountName).toBe('mystorageaccount');
       expect(result.container).toBe('documents');
       expect(result.etag).toBe('"az-etag"');
+      expect(result.lastModified).toEqual(new Date('2026-01-01'));
+      expect(result.encryptionScope).toBe('default-scope');
       expect(result.tier).toBe('Hot');
       expect(result.uri).toContain('https://mystorageaccount.blob.core.windows.net');
+    });
+
+    it('should pass content type, content disposition, tier and metadata to the SDK', async () => {
+      const containerClient = createMockContainerClient();
+      await uploadToAzureBlob(createMockFile('résumé.pdf'), containerClient, {
+        ...baseConfig,
+        tier: 'Cool',
+        metadata: { owner: 'u1' },
+      });
+
+      const blobClient = vi.mocked(containerClient.getBlockBlobClient).mock.results[0]
+        .value;
+      const [data, length, options] = blobClient.upload.mock.calls[0];
+      expect(Buffer.isBuffer(data)).toBe(true);
+      expect(length).toBe(data.byteLength);
+      expect(options).toMatchObject({
+        blobHTTPHeaders: {
+          blobContentType: 'application/pdf',
+          blobContentDisposition: `inline; filename="r_sum_.pdf"; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf`,
+        },
+        metadata: { owner: 'u1' },
+        tier: 'Cool',
+      });
+    });
+
+    it('should omit content disposition when configured with false', async () => {
+      const containerClient = createMockContainerClient();
+      await uploadToAzureBlob(createMockFile(), containerClient, {
+        ...baseConfig,
+        contentDisposition: false,
+      });
+
+      const blobClient = vi.mocked(containerClient.getBlockBlobClient).mock.results[0]
+        .value;
+      expect(blobClient.upload.mock.calls[0][2].blobHTTPHeaders).not.toHaveProperty(
+        'blobContentDisposition',
+      );
+    });
+
+    it('should give same-named files distinct blob names', async () => {
+      const containerClient = createMockContainerClient();
+      const [a, b] = await uploadMultipleToAzureBlob(
+        [createMockFile('same.pdf'), createMockFile('same.pdf')],
+        containerClient,
+        baseConfig,
+      );
+      expect(a.name).not.toBe(b.name);
+      expect(a.name).toMatch(/^uploads\/\d+-[0-9a-f]{8}-same\.pdf$/);
+    });
+
+    it('should strip directory parts from client filenames', async () => {
+      const result = await uploadToAzureBlob(
+        createMockFile('..\\..\\evil.pdf'),
+        createMockContainerClient(),
+        baseConfig,
+      );
+      expect(result.name).toMatch(/^uploads\/\d+-[0-9a-f]{8}-evil\.pdf$/);
     });
 
     it('should validate required options', async () => {
@@ -111,7 +171,7 @@ describe('azure-uploader', () => {
           code: 'ContainerNotFound',
           message: 'Container not found',
         }),
-        getProperties: vi.fn(),
+        exists: vi.fn(),
         delete: vi.fn(),
       };
       const containerClient: AzureBlobContainerClientInterface = {
@@ -150,7 +210,7 @@ describe('azure-uploader', () => {
       const mockBlobClient = {
         url: 'https://test',
         upload: vi.fn(),
-        getProperties: vi.fn(),
+        exists: vi.fn(),
         delete: vi.fn().mockRejectedValue(new Error('Azure delete failed')),
       };
       const containerClient: AzureBlobContainerClientInterface = {
@@ -164,7 +224,64 @@ describe('azure-uploader', () => {
     });
   });
 
+  describe('existsInAzureBlob', () => {
+    it('should return the SDK exists() result', async () => {
+      expect(await existsInAzureBlob('a.pdf', createMockContainerClient())).toBe(true);
+    });
+
+    it('should wrap exists errors', async () => {
+      const containerClient: AzureBlobContainerClientInterface = {
+        containerName: 'documents',
+        getBlockBlobClient: vi.fn().mockReturnValue({
+          exists: vi
+            .fn()
+            .mockRejectedValue({ statusCode: 403, code: 'AuthorizationFailure' }),
+        }),
+      };
+      await expect(existsInAzureBlob('a.pdf', containerClient)).rejects.toMatchObject({
+        code: 'AuthorizationFailure',
+        statusCode: 403,
+      });
+    });
+  });
+
+  describe('AzureBlobStorage adapter', () => {
+    it('should delegate upload, uploadMany, delete and exists', async () => {
+      const containerClient = createMockContainerClient();
+      const storage = new AzureBlobStorage(containerClient, baseConfig);
+
+      expect((await storage.upload(createMockFile())).container).toBe('documents');
+      expect(await storage.uploadMany([createMockFile(), createMockFile()])).toHaveLength(
+        2,
+      );
+      await storage.delete('uploads/doc.pdf');
+      expect(await storage.exists('uploads/doc.pdf')).toBe(true);
+    });
+  });
+
   describe('getAzureBlobSasUrl', () => {
+    it('should default to read-only permissions', async () => {
+      const { BlobSASPermissions } = await import('@azure/storage-blob');
+      getAzureBlobSasUrl('uploads/doc.pdf', createMockContainerClient(), 'a2V5');
+      expect(BlobSASPermissions.parse).toHaveBeenLastCalledWith('r');
+
+      getAzureBlobSasUrl(
+        'uploads/doc.pdf',
+        createMockContainerClient(),
+        'a2V5',
+        undefined,
+        'rw',
+      );
+      expect(BlobSASPermissions.parse).toHaveBeenLastCalledWith('rw');
+    });
+
+    it('should reject a container client without accountName', () => {
+      const containerClient = createMockContainerClient({ accountName: undefined });
+      expect(() => getAzureBlobSasUrl('a.pdf', containerClient, 'a2V5')).toThrow(
+        'no accountName',
+      );
+    });
+
     it('should generate SAS query URL with account key', () => {
       const containerClient = createMockContainerClient();
       const sasUrl = getAzureBlobSasUrl(

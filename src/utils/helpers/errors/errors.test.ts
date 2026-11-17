@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MultiPartError } from './errors';
+import { MultiPartError } from './errors.js';
 
 describe('MultiPartError', () => {
   it('should initialize with message, code and name', () => {

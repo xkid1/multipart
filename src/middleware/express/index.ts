@@ -1,13 +1,18 @@
+import { MultiPartError } from '../../utils/index.js';
+import { parseMultipartRequest, toMiddlewareError } from '../shared/parse-request.js';
+
+import type {
+  ExpressMultipartOptions,
+  FileData,
+  MultipartRequestProperties,
+} from '../../types/index.js';
 import type { NextFunction, Request, Response } from 'express';
 
-import type { MiddlewareError, MiddlewareOptions } from '@types';
-import { parseMultipartWithDuplicates } from '../core/parse-multipart';
-
 /**
- * Express multipart middleware factory
+ * Express multipart/form-data middleware.
  *
- * @param options - Middleware configuration
- * @returns Express middleware function
+ * On success, sets `req.body` (all values), `req.files` and `req.fields`.
+ * Requests that aren't multipart/form-data pass through untouched.
  *
  * @example
  * ```typescript
@@ -16,205 +21,93 @@ import { parseMultipartWithDuplicates } from '../core/parse-multipart';
  *
  * const app = express();
  *
- * // Basic usage
- * app.post('/upload', multipartExpress(), (req, res) => {
- *   console.log(req.files);  // File data
- *   console.log(req.fields); // Text fields
- *   res.json({ success: true });
- * });
- *
- * // With options
- * app.post('/upload', multipartExpress({
- *   maxSize: 500 * 1024 * 1024,    // 500MB
- *   maxFiles: 10,
- *   allowedMimeTypes: ['image/jpeg', 'image/png'],
- *   fileSize: 100 * 1024 * 1024,   // 100MB per file
- * }), (req, res) => {
- *   if (req.multipartError) {
- *     return res.status(400).json({ error: req.multipartError });
- *   }
- *   res.json({ files: req.files, fields: req.fields });
- * });
+ * app.post('/upload', multipartExpress({ maxFiles: 5, allowedMimeTypes: ['image/*'] }),
+ *   (req, res) => {
+ *     if (req.multipartError) {
+ *       return res.status(req.multipartError.statusCode).json({ error: req.multipartError });
+ *     }
+ *     res.json({ files: Object.keys(req.files ?? {}), fields: req.fields });
+ *   });
  * ```
  */
-export const multipartExpress = (options: MiddlewareOptions = {}) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // Only process multipart/form-data requests
-    const contentTypeHeader = req.headers['content-type'];
-    const contentType = Array.isArray(contentTypeHeader)
-      ? contentTypeHeader[0]
-      : contentTypeHeader;
-    if (!contentType || !contentType.includes('multipart/form-data')) {
-      return next();
-    }
-
-    // Extract boundary from content-type header
-    const boundaryMatch = contentType.match(/boundary=([^;]+)/);
-    if (!boundaryMatch) {
-      const error: MiddlewareError = {
-        code: 'NO_BOUNDARY',
-        message: 'No boundary found in Content-Type header',
-        statusCode: 400,
-      };
-      (req as any).multipartError = error;
-      return next();
-    }
-
-    const boundary = boundaryMatch[1].trim().replace(/^["']|["']$/g, '');
-
-    try {
-      // Collect the request body
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
-      const maxSize = options.maxSize || 104857600; // 100MB default
-      let exceeded = false;
-
-      req.on('data', (chunk: Buffer) => {
-        if (exceeded) return;
-        totalSize += chunk.length;
-        if (totalSize > maxSize) {
-          exceeded = true;
-          const error: MiddlewareError = {
-            code: 'SIZE_LIMIT_EXCEEDED',
-            message: `Request body exceeds size limit of ${maxSize} bytes`,
-            statusCode: 413,
-            size: totalSize,
-            limit: maxSize,
-          };
-          (req as any).multipartError = error;
-          chunks.length = 0;
+export const multipartExpress =
+  (options: ExpressMultipartOptions = {}) =>
+  (req: Request, _res: Response, next: NextFunction): Promise<void> =>
+    parseMultipartRequest(req, options).then(
+      (parsed) => {
+        if (parsed) {
+          req.body = parsed.body;
+          req.files = parsed.files;
+          req.fields = parsed.fields;
+        }
+        next();
+      },
+      (error: unknown) => {
+        if (options.onError === 'next') {
+          next(error);
           return;
         }
-        chunks.push(chunk);
-      });
-
-      req.on('end', () => {
-        if (exceeded || (req as any).multipartError) {
-          return next();
-        }
-
-        try {
-          const body = Buffer.concat(chunks);
-          // Parse multipart data
-          const data = parseMultipartWithDuplicates(body, boundary, options);
-
-          // Separate files and fields
-          const files: Record<string, any> = {};
-          const fields: Record<string, any> = {};
-
-          for (const [key, value] of Object.entries(data)) {
-            if (Array.isArray(value)) {
-              // Check if it's an array of FileData or strings
-              if (
-                value.length > 0 &&
-                typeof value[0] === 'object' &&
-                'buffer' in value[0]
-              ) {
-                files[key] = value;
-              } else {
-                fields[key] = value;
-              }
-            } else if (typeof value === 'object' && 'buffer' in value) {
-              files[key] = value;
-            } else {
-              fields[key] = value;
-            }
-          }
-
-          // Attach to request object
-          (req as any).files = files;
-          (req as any).fields = fields;
-          (req as any).body = data;
-
-          next();
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error(String(error));
-          const middlewareError: MiddlewareError = {
-            code: 'PARSE_ERROR',
-            message: err.message,
-            statusCode: 400,
-          };
-          (req as any).multipartError = middlewareError;
-          next();
-        }
-      });
-
-      req.on('error', (error) => {
-        const middlewareError: MiddlewareError = {
-          code: 'REQUEST_ERROR',
-          message: error.message,
-          statusCode: 500,
-        };
-        (req as any).multipartError = middlewareError;
+        req.multipartError = toMiddlewareError(error);
         next();
-      });
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      const middlewareError: MiddlewareError = {
-        code: 'INIT_ERROR',
-        message: err.message,
-        statusCode: 500,
-      };
-      (req as any).multipartError = middlewareError;
-      next();
-    }
-  };
-};
+      },
+    );
 
 /**
- * Error handler middleware for multipart errors
+ * Express error handler that responds to multipart errors with their status code
+ * and `{ error: MiddlewareError }`, and forwards every other error.
+ *
+ * Handles both modes: errors attached to `req.multipartError`, and
+ * {@link MultiPartError}s passed to `next(err)` with `onError: 'next'`.
  *
  * @example
  * ```typescript
- * app.post('/upload', multipartMiddleware(), (req, res) => {
- *   if (req.multipartError) {
- *     return res.status(req.multipartError.statusCode)
- *       .json({ error: req.multipartError.message });
- *   }
- *   res.json({ success: true });
- * });
+ * app.post('/upload', multipartExpress({ onError: 'next' }), handler);
+ * app.use(multipartErrorHandler);
  * ```
  */
 export const multipartErrorHandler = (
-  err: any,
+  err: unknown,
   req: Request,
   res: Response,
   next: NextFunction,
 ): void => {
-  const multipartError = (req as any).multipartError;
-  if (multipartError) {
-    res.status(multipartError.statusCode).json({ error: multipartError });
-  } else {
+  const error =
+    req.multipartError ??
+    (err instanceof MultiPartError ? toMiddlewareError(err) : undefined);
+  if (!error) {
     next(err);
+    return;
   }
+  res.status(error.statusCode).json({ error });
 };
 
-/**
- * Utility: Check if field contains files
- */
-export const hasFiles = (req: Request, fieldName?: string): boolean => {
-  const files = (req as any).files;
-  if (!files) return false;
-  if (!fieldName) return Object.keys(files).length > 0;
-  return fieldName in files;
+type MultipartRequest = Pick<MultipartRequestProperties, 'files' | 'fields'>;
+
+/** Whether the request has any files, or a file under `fieldName`. */
+export const hasFiles = (req: MultipartRequest, fieldName?: string): boolean => {
+  if (!req.files) return false;
+  return fieldName === undefined
+    ? Object.keys(req.files).length > 0
+    : fieldName in req.files;
 };
 
-/**
- * Utility: Get file(s) from field
- */
-export const getFile = (req: Request, fieldName: string) => {
-  const files = (req as any).files;
-  if (!files || !(fieldName in files)) return null;
-  return files[fieldName];
-};
+/** The file(s) uploaded under `fieldName`, or `null`. */
+export const getFile = (
+  req: MultipartRequest,
+  fieldName: string,
+): FileData | FileData[] | null => req.files?.[fieldName] ?? null;
 
-/**
- * Utility: Get field value
- */
-export const getField = (req: Request, fieldName: string) => {
-  const fields = (req as any).fields;
-  if (!fields || !(fieldName in fields)) return null;
-  return fields[fieldName];
-};
+/** The text value(s) of `fieldName`, or `null`. */
+export const getField = (
+  req: MultipartRequest,
+  fieldName: string,
+): string | string[] | null => req.fields?.[fieldName] ?? null;
 
 export default multipartExpress;
+
+export type {
+  ExpressMultipartOptions,
+  FileData,
+  MiddlewareError,
+  MultipartRequestProperties,
+} from '../../types/index.js';

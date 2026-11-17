@@ -15,11 +15,20 @@ export interface LocalStorageConfig {
   /** Optional subdirectory prefix */
   prefix?: string;
 
-  /** Optional chmod permissions (default: 0o644) */
+  /** Optional chmod permissions applied after writing (default: process umask) */
   permissions?: number;
 
-  /** Whether to preserve original filename (default: true) */
+  /**
+   * Keep the (sanitized) original filename (default: `true`). When `false`, a unique
+   * `<timestamp>-<random>-<filename>` name is generated, as for S3 and Azure.
+   */
   preserveFilename?: boolean;
+
+  /**
+   * Replace an existing file with the same name (default: `false`). When `false`,
+   * a numeric suffix is added instead (`report-1.pdf`, `report-2.pdf`, ...).
+   */
+  overwrite?: boolean;
 }
 
 /**
@@ -45,6 +54,13 @@ export interface S3UploadConfig {
   /** Optional content type override */
   contentType?: string;
 
+  /**
+   * Content-Disposition stored with the object. Defaults to
+   * `inline; filename="<original>"`, so downloads keep the original filename.
+   * Set to `false` to omit it.
+   */
+  contentDisposition?: string | false;
+
   /** Optional server-side encryption (e.g., 'AES256', 'aws:kms') */
   serverSideEncryption?: string;
 
@@ -63,7 +79,7 @@ export interface S3UploadConfig {
  * @interface AzureBlobUploadConfig
  */
 export interface AzureBlobUploadConfig {
-  /** Azure connection string or account name */
+  /** Azure storage account name */
   accountName: string;
 
   /** Container name */
@@ -80,6 +96,13 @@ export interface AzureBlobUploadConfig {
 
   /** Optional content type override */
   contentType?: string;
+
+  /**
+   * Content-Disposition stored with the blob. Defaults to
+   * `inline; filename="<original>"`, so downloads keep the original filename.
+   * Set to `false` to omit it.
+   */
+  contentDisposition?: string | false;
 
   /** Optional blob encryption scope */
   encryptionScope?: string;
@@ -108,7 +131,7 @@ export interface LocalStorageUploadResponse {
   /** File extension */
   extension: string;
 
-  /** File permissions */
+  /** File permission bits of the written file (e.g. `0o644`) */
   permissions: number;
 
   /** File creation/write timestamp */

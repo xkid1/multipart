@@ -1,10 +1,7 @@
 /**
- * AWS S3 file upload utility for multipart parsed files
+ * AWS S3 storage for parsed multipart files.
  *
- * This module provides utilities for uploading parsed multipart files to AWS S3.
- * AWS SDK for JavaScript (v3) must be installed separately:
- *
- * @example
+ * Requires the AWS SDK v3 S3 client:
  * ```bash
  * npm install @aws-sdk/client-s3
  * ```
@@ -12,56 +9,107 @@
  * @module @xkid1/multipart/storage/s3
  */
 
-import path from 'node:path';
-
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   type PutObjectCommandInput,
 } from '@aws-sdk/client-s3';
 
-import { MultiPartError } from '@utils';
+import { MultiPartError } from '../../utils/index.js';
+import {
+  createStorageError,
+  createUniqueName,
+  encodeKeyForUrl,
+  errorMessage,
+  isStorageError,
+  resolveContentDisposition,
+  stringProp,
+} from '../shared/index.js';
 
 import type {
   FileData,
   S3ClientInterface,
   S3UploadConfig,
   S3UploadResponse,
-  StorageUploadError,
-} from '@types';
+} from '../../types/index.js';
+
+/** Map an AWS SDK error (or anything else) to a {@link StorageError}. */
+const s3Error = (error: unknown, filename?: string): Error => {
+  if (isStorageError(error)) return error;
+
+  const status = (error as { $metadata?: { httpStatusCode?: unknown } } | null)?.$metadata
+    ?.httpStatusCode;
+  const message = errorMessage(error, 'Unknown S3 error');
+
+  return createStorageError(
+    {
+      code: stringProp(error, 'name') ?? stringProp(error, 'Code') ?? 'S3_ERROR',
+      message,
+      statusCode: typeof status === 'number' ? status : 500,
+      filename,
+      details: { awsCode: stringProp(error, 'Code'), awsMessage: message },
+    },
+    error,
+  );
+};
+
+const validationError = (message: string, filename?: string): Error =>
+  createStorageError({ code: 'S3_VALIDATION_ERROR', message, statusCode: 400, filename });
+
+/** Encode a tag set as the URL query string S3 expects in `Tagging`. */
+const encodeTagging = (tags: Record<string, string>): string =>
+  Object.entries(tags)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&');
+
+/** Build the PutObject input from the file and config, omitting unset options. */
+const buildPutObjectInput = (
+  file: FileData,
+  key: string,
+  config: S3UploadConfig,
+): PutObjectCommandInput => {
+  const contentDisposition = resolveContentDisposition(
+    file.name,
+    config.contentDisposition,
+  );
+  return {
+    Bucket: config.bucket,
+    Key: key,
+    Body: file.buffer,
+    ContentType: config.contentType ?? (file.mimeType || 'application/octet-stream'),
+    ContentLength: file.buffer.byteLength,
+    Metadata: config.metadata ?? {},
+    ...(contentDisposition && { ContentDisposition: contentDisposition }),
+    ...(config.acl && { ACL: config.acl }),
+    ...(config.serverSideEncryption && {
+      ServerSideEncryption:
+        config.serverSideEncryption as PutObjectCommandInput['ServerSideEncryption'],
+    }),
+    ...(config.sseKmsKeyId && { SSEKMSKeyId: config.sseKmsKeyId }),
+    ...(config.storageClass && {
+      StorageClass: config.storageClass as PutObjectCommandInput['StorageClass'],
+    }),
+    ...(config.tagging && { Tagging: encodeTagging(config.tagging) }),
+  };
+};
 
 /**
- * Upload a single file to AWS S3
+ * Upload a single file to S3 under `<prefix><timestamp>-<random>-<filename>`.
  *
- * @param file - Parsed file data from multipart parser
- * @param s3Client - Configured S3Client instance
- * @param config - S3 upload configuration
- * @returns Promise resolving to S3 upload response
- * @throws {StorageUploadError} If upload fails
+ * @throws {StorageError} If validation or the upload fails
  *
  * @example
  * ```typescript
- * import { multipart } from '@xkid1/multipart/middleware/express';
- * import { uploadToS3 } from '@xkid1/multipart/storage/s3';
  * import { S3Client } from '@aws-sdk/client-s3';
+ * import { uploadToS3 } from '@xkid1/multipart/storage/s3';
  *
- * const s3Client = new S3Client({ region: 'us-east-1' });
- *
- * app.post('/upload', multipart(), async (req, res) => {
- *   try {
- *     const file = req.files?.['file'];
- *
- *     const result = await uploadToS3(file, s3Client, {
- *       bucket: 'my-bucket',
- *       region: 'us-east-1',
- *       prefix: 'uploads/'
- *     });
- *
- *     res.json({ success: true, s3: result });
- *   } catch (error) {
- *     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
- *   }
+ * const s3 = new S3Client({ region: 'us-east-1' });
+ * const result = await uploadToS3(req.files.avatar, s3, {
+ *   bucket: 'my-bucket',
+ *   region: 'us-east-1',
+ *   prefix: 'uploads/',
  * });
  * ```
  */
@@ -70,50 +118,18 @@ export async function uploadToS3(
   s3Client: S3ClientInterface,
   config: S3UploadConfig,
 ): Promise<S3UploadResponse> {
+  if (!Buffer.isBuffer(file?.buffer))
+    throw validationError('Invalid file data: missing buffer');
+  if (!config?.bucket) throw validationError('S3 bucket name is required', file.name);
+  if (!config.region) throw validationError('AWS region is required', file.name);
+
+  const key = createUniqueName(file.name, config.prefix);
+
   try {
-    if (!file?.buffer) {
-      throw new Error('Invalid file data: missing buffer');
-    }
-
-    if (!config.bucket) {
-      throw new Error('S3 bucket name is required');
-    }
-
-    if (!config.region) {
-      throw new Error('AWS region is required');
-    }
-
-    // Generate S3 object key with sanitized filename
-    const timestamp = Date.now();
-    const sanitizedFilename = path.basename(file.name);
-    const key = `${config.prefix ?? ''}${timestamp}-${sanitizedFilename}`;
-
-    // Build put object params
-    const params: PutObjectCommandInput = {
-      Bucket: config.bucket,
-      Key: key,
-      Body: file.buffer,
-      ContentType: config.contentType ?? file.mimeType ?? 'application/octet-stream',
-      Metadata: config.metadata ?? {},
-      ...(config.acl && { ACL: config.acl }),
-      ...(config.serverSideEncryption && {
-        ServerSideEncryption: config.serverSideEncryption,
-      }),
-      ...(config.sseKmsKeyId && { SSEKMSKeyId: config.sseKmsKeyId }),
-      ...(config.storageClass && { StorageClass: config.storageClass }),
-      ...(config.tagging && {
-        Tagging: Object.entries(config.tagging)
-          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-          .join('&'),
-      }),
-    };
-
-    // Execute upload
-    const command = new PutObjectCommand(params);
-    const response = (await s3Client.send(command)) as Record<string, unknown>;
-
-    // Construct full S3 URL
-    const url = `https://${config.bucket}.s3.${config.region}.amazonaws.com/${key}`;
+    const response = (await s3Client.send(
+      new PutObjectCommand(buildPutObjectInput(file, key, config)),
+    )) as
+      { VersionId?: string; ETag?: string; ServerSideEncryption?: string } | undefined;
 
     return {
       key,
@@ -122,24 +138,19 @@ export async function uploadToS3(
       size: file.size,
       mimeType: config.contentType ?? file.mimeType,
       filename: file.name,
-      versionId: (response.VersionId as string) || undefined,
-      url,
-      etag: (response.ETag as string) ?? '',
-      serverSideEncryption: (response.ServerSideEncryption as string) || undefined,
+      versionId: response?.VersionId,
+      url: `https://${config.bucket}.s3.${config.region}.amazonaws.com/${encodeKeyForUrl(key)}`,
+      etag: response?.ETag ?? '',
+      serverSideEncryption: response?.ServerSideEncryption,
     };
   } catch (error) {
-    throw createS3Error(error, file?.name);
+    throw s3Error(error, file.name);
   }
 }
 
 /**
- * Upload multiple files to AWS S3
- *
- * @param files - Array of parsed file data
- * @param s3Client - Configured S3Client instance
- * @param config - S3 upload configuration
- * @returns Promise resolving to array of S3 upload responses
- * @throws {StorageUploadError} If any upload fails
+ * Upload files one after another. Rejects on the first failure; files uploaded
+ * before it are not rolled back.
  */
 export async function uploadMultipleToS3(
   files: FileData[],
@@ -147,53 +158,51 @@ export async function uploadMultipleToS3(
   config: S3UploadConfig,
 ): Promise<S3UploadResponse[]> {
   const results: S3UploadResponse[] = [];
-
-  for (const file of files) {
-    const result = await uploadToS3(file, s3Client, config);
-    results.push(result);
-  }
-
+  for (const file of files) results.push(await uploadToS3(file, s3Client, config));
   return results;
 }
 
-/**
- * Delete a file from AWS S3
- *
- * @param key - S3 object key to delete
- * @param s3Client - Configured S3Client instance
- * @param bucket - S3 bucket name
- */
+/** Delete an object from S3. */
 export async function deleteFromS3(
   key: string,
   s3Client: S3ClientInterface,
   bucket: string,
 ): Promise<void> {
   try {
-    const command = new DeleteObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
-
-    await s3Client.send(command);
+    await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   } catch (error) {
-    throw createS3Error(error);
+    throw s3Error(error);
   }
 }
 
+/** Whether an object exists in S3 (via `HeadObject`). Other errors are rethrown. */
+export async function existsInS3(
+  key: string,
+  s3Client: S3ClientInterface,
+  bucket: string,
+): Promise<boolean> {
+  try {
+    await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } } | null)
+      ?.$metadata?.httpStatusCode;
+    if (status === 404 || stringProp(error, 'name') === 'NotFound') return false;
+    throw s3Error(error);
+  }
+}
+
+const isModuleNotFound = (error: unknown): boolean => {
+  const code = stringProp(error, 'code');
+  return code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND';
+};
+
 /**
- * Generate a pre-signed URL for an S3 object
+ * Generate a pre-signed GET URL for an object.
  *
- * Requires `@aws-sdk/s3-request-presigner` to be installed separately:
- * ```bash
- * npm install @aws-sdk/s3-request-presigner
- * ```
+ * Requires `@aws-sdk/s3-request-presigner` (`npm install @aws-sdk/s3-request-presigner`).
  *
- * @param key - S3 object key
- * @param s3Client - Configured S3Client instance
- * @param bucket - S3 bucket name
- * @param expiresIn - URL expiration time in seconds (default: 3600)
- * @returns Promise resolving to pre-signed URL string
- * @throws Error if @aws-sdk/s3-request-presigner is not installed
+ * @param expiresIn - Seconds until the URL expires (default: 3600)
  */
 export async function getS3PresignedUrl(
   key: string,
@@ -203,55 +212,19 @@ export async function getS3PresignedUrl(
 ): Promise<string> {
   try {
     const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
-
-    return await getSignedUrl(s3Client, command, { expiresIn });
+    return await getSignedUrl(
+      s3Client as Parameters<typeof getSignedUrl>[0],
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
+      { expiresIn },
+    );
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes('@aws-sdk/s3-request-presigner') ||
-        (error as unknown as Record<string, unknown>).code === 'ERR_MODULE_NOT_FOUND')
-    ) {
+    if (isModuleNotFound(error)) {
       throw new MultiPartError(
         'Package @aws-sdk/s3-request-presigner is required to generate presigned URLs. Please install it with: npm install @aws-sdk/s3-request-presigner',
+        'MISSING_DEPENDENCY',
+        { cause: error },
       );
     }
-    throw createS3Error(error);
+    throw s3Error(error);
   }
-}
-
-/**
- * Create a structured S3 error object wrapped in an Error
- *
- * @param error - Original error from AWS SDK or unknown error
- * @param filename - Optional filename associated with error
- * @returns Error with StorageUploadError data
- */
-function createS3Error(error: unknown, filename?: string): Error {
-  const errorObj = (error ?? {}) as Record<string, unknown>;
-  const metadata = errorObj.$metadata as Record<string, unknown> | undefined;
-  const statusCode = (metadata?.httpStatusCode as number) ?? 500;
-  const code = (errorObj.name as string) ?? (errorObj.Code as string) ?? 'S3_ERROR';
-  const message =
-    error instanceof Error
-      ? error.message
-      : ((errorObj.message as string) ?? 'Unknown S3 error');
-
-  const storageError: StorageUploadError = {
-    code,
-    message,
-    statusCode,
-    filename,
-    details: {
-      awsCode: errorObj.Code,
-      awsMessage: message,
-    },
-  };
-
-  const err = new MultiPartError(message);
-  Object.assign(err, storageError);
-  return err;
 }

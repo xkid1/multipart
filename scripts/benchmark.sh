@@ -89,7 +89,7 @@ setup_benchmark() {
     mkdir -p "$BENCHMARK_TEMP"
     
     # Check if library is built
-    if [ ! -f "$PROJECT_ROOT/dist/index.js" ]; then
+    if [ ! -f "$PROJECT_ROOT/dist/esm/index.js" ]; then
         log_warning "Library not built. Building now..."
         cd "$PROJECT_ROOT"
         yarn build:js > /dev/null 2>&1
@@ -123,7 +123,7 @@ cleanup_benchmark() {
 
 create_benchmark_test_script() {
     cat > "$BENCHMARK_TEMP/benchmark-test.mjs" << 'EOF'
-import { multipart } from '../../dist/index.js';
+import { multipart } from '../../dist/esm/index.js';
 import { performance } from 'perf_hooks';
 
 /**

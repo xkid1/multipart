@@ -1,7 +1,11 @@
-import { findNextBoundary } from './find-next-boundary';
+import { findNextBoundary } from './find-next-boundary.js';
 
 /**
  * Extract a single part from multipart body between boundaries
+ *
+ * @deprecated The returned part keeps the CRLF that precedes the next boundary, so
+ * part bodies are 2 bytes too long. The parser no longer uses this helper; use
+ * {@link iterateParts} instead. Will be removed in the next major version.
  * @param body - The multipart body buffer
  * @param boundaryBuffer - The boundary delimiter buffer
  * @param startBoundaryIndex - Index of current boundary

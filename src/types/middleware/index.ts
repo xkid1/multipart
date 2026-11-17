@@ -4,8 +4,10 @@
  */
 
 export type {
+  ExpressMultipartOptions,
   MiddlewareContext,
   MiddlewareError,
   MiddlewareOptions,
   ParsedFormData,
-} from './core';
+} from './core.js';
+export type { MultipartRequestProperties, ParsedMultipartRequest } from './request.js';

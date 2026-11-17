@@ -18,6 +18,9 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+
   code-conventions:
     needs:
       - test
@@ -31,6 +34,7 @@ jobs:
       - test
       - build
       - code-conventions
+      - e2e
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -39,8 +43,9 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           BUILD_RESULT: ${{ needs.build.result }}
           CONVENTIONS_RESULT: ${{ needs.code-conventions.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          if [[ "$TEST_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$CONVENTIONS_RESULT" != "success" ]]; then
+          if [[ "$TEST_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$CONVENTIONS_RESULT" != "success" || "$E2E_RESULT" != "success" ]]; then
             echo "One or more CI checks did not pass."
             exit 1
           fi

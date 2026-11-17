@@ -3,20 +3,11 @@
     /* Language & Environment */
     "target": "ESNext",
     "lib": ["ESNext"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
 
     /* Types */
     "types": ["node"],
-
-    /* Paths */
-    "paths": {
-      "@types": ["./src/types/index.ts"],
-      "@libs": ["./src/libs/index.ts"],
-      "@utils": ["./src/utils/index.ts"],
-      "@middleware": ["./src/middleware/index.ts"],
-      "@storage": ["./src/storage/index.ts"]
-    },
 
     /* JavaScript Support */
     "allowJs": true,

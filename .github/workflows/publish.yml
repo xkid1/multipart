@@ -50,6 +50,16 @@ jobs:
       - name: Verify packed consumer
         run: bash scripts/smoke-consumer.sh
 
+      # The full Node.js matrix runs in CI (e2e.yml); here the exact commit being
+      # published is re-tested end to end on the release toolchain.
+      - name: End-user tests (packed tarball, frameworks, S3/Azure emulators)
+        env:
+          E2E_REQUIRE_CLOUD: '1'
+        run: |
+          bash e2e/emulators.sh up
+          node e2e/run.mjs
+          bash e2e/emulators.sh down
+
       # Tag pushes stage on npm (or publish directly if staging not enabled); approval is completed manually in npm if staged.
       - name: Setup Node for npmjs.com
         uses: actions/setup-node@v4

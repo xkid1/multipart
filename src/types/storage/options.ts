@@ -8,7 +8,7 @@ import type {
   LocalStorageConfig,
   S3UploadConfig,
   StorageUploadError,
-} from './config';
+} from './config.js';
 
 /**
  * Error handler function signature - accepts StorageUploadError or Error
@@ -90,11 +90,11 @@ export interface AzureBlobClientInterface {
     options?: Record<string, unknown>,
   ): Promise<AzureBlobUploadResultInterface>;
 
-  /** Get blob properties */
-  getProperties(): Promise<AzureBlobPropertiesInterface>;
-
   /** Delete the blob */
-  delete(): Promise<void>;
+  delete(): Promise<unknown>;
+
+  /** Whether the blob exists */
+  exists(): Promise<boolean>;
 }
 
 /**
@@ -109,10 +109,13 @@ export interface AzureBlobUploadResultInterface {
 
   /** Version ID if applicable */
   versionId?: string;
+
+  /** Encryption scope used, if any */
+  encryptionScope?: string;
 }
 
 /**
- * Azure Blob properties interface
+ * Azure Blob properties interface (subset of `BlockBlobClient.getProperties()`)
  */
 export interface AzureBlobPropertiesInterface {
   /** ETag of the blob */
