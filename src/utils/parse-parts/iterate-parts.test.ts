@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { iterateParts } from './iterate-parts.js';
-import { splitPartSections } from './split-part-sections.js';
+import { iterateParts } from './iterate-parts';
+import { splitPartSections } from './split-part-sections';
 
 const bodies = (body: string, boundary = 'b') =>
   [...iterateParts(Buffer.from(body), boundary)].map((p) => p.bodySection.toString());

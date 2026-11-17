@@ -4,7 +4,7 @@ import {
   getS3PresignedUrl,
   uploadMultipleToS3,
   uploadToS3,
-} from './s3-uploader.js';
+} from './s3-uploader';
 
 import type {
   FileData,
@@ -12,7 +12,7 @@ import type {
   S3UploadConfig,
   S3UploadResponse,
   StorageAdapter,
-} from '../../types/index.js';
+} from '@types';
 
 /**
  * AWS S3 {@link StorageAdapter}.

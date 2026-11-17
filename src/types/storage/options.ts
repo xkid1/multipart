@@ -1,40 +1,8 @@
 /**
- * Storage middleware options types
+ * Minimal SDK client interfaces the storage helpers depend on. The real
+ * `S3Client` and `ContainerClient` satisfy them, and tests can pass simple mocks.
  * @module @xkid1/multipart/types/storage
  */
-
-import type {
-  AzureBlobUploadConfig,
-  LocalStorageConfig,
-  S3UploadConfig,
-  StorageUploadError,
-} from './config.js';
-
-/**
- * Error handler function signature - accepts StorageUploadError or Error
- */
-export type StorageErrorHandler = (
-  error: StorageUploadError | Error,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  req: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  res: any,
-) => void;
-
-/**
- * Local storage options for middleware
- * @interface LocalStorageOptions
- */
-export interface LocalStorageOptions {
-  /** Local storage configuration */
-  config: LocalStorageConfig;
-
-  /** Field name(s) to upload (default: all files) */
-  fields?: string[];
-
-  /** Optional error handler */
-  onError?: StorageErrorHandler;
-}
 
 /**
  * S3 client interface - properties used in upload operations
@@ -42,24 +10,6 @@ export interface LocalStorageOptions {
 export interface S3ClientInterface {
   /** Send method for executing commands */
   send(command: unknown): Promise<unknown>;
-}
-
-/**
- * S3 storage options for middleware
- * @interface S3StorageOptions
- */
-export interface S3StorageOptions {
-  /** S3 upload configuration */
-  config: S3UploadConfig;
-
-  /** S3Client instance from @aws-sdk/client-s3 */
-  s3Client: S3ClientInterface;
-
-  /** Field name(s) to upload to S3 (default: all files) */
-  fields?: string[];
-
-  /** Optional error handler */
-  onError?: StorageErrorHandler;
 }
 
 /**
@@ -112,39 +62,4 @@ export interface AzureBlobUploadResultInterface {
 
   /** Encryption scope used, if any */
   encryptionScope?: string;
-}
-
-/**
- * Azure Blob properties interface (subset of `BlockBlobClient.getProperties()`)
- */
-export interface AzureBlobPropertiesInterface {
-  /** ETag of the blob */
-  etag?: string;
-
-  /** Last modified timestamp */
-  lastModified?: Date;
-
-  /** Encryption scope if set */
-  encryptionScope?: string;
-
-  /** Access tier (Hot, Cool, Archive) */
-  accessTier?: string;
-}
-
-/**
- * Azure Blob Storage options for middleware
- * @interface AzureBlobStorageOptions
- */
-export interface AzureBlobStorageOptions {
-  /** Azure Blob upload configuration */
-  config: AzureBlobUploadConfig;
-
-  /** BlobContainerClient instance from @azure/storage-blob */
-  containerClient: AzureBlobContainerClientInterface;
-
-  /** Field name(s) to upload to Azure (default: all files) */
-  fields?: string[];
-
-  /** Optional error handler */
-  onError?: StorageErrorHandler;
 }

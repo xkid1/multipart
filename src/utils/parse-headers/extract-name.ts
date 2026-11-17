@@ -1,4 +1,4 @@
-import { getHeaderParam } from './header-params.js';
+import { getHeaderParam } from './header-params';
 
 /**
  * Extract the field name from a Content-Disposition header.

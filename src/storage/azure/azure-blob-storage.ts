@@ -3,7 +3,7 @@ import {
   existsInAzureBlob,
   uploadMultipleToAzureBlob,
   uploadToAzureBlob,
-} from './azure-uploader.js';
+} from './azure-uploader';
 
 import type {
   AzureBlobContainerClientInterface,
@@ -11,7 +11,7 @@ import type {
   AzureBlobUploadResponse,
   FileData,
   StorageAdapter,
-} from '../../types/index.js';
+} from '@types';
 
 /**
  * Azure Blob Storage {@link StorageAdapter}.

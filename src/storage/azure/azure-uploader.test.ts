@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AzureBlobStorage } from './azure-blob-storage.js';
+import { AzureBlobStorage } from './azure-blob-storage';
 import {
   deleteFromAzureBlob,
   existsInAzureBlob,
   getAzureBlobSasUrl,
   uploadMultipleToAzureBlob,
   uploadToAzureBlob,
-} from './azure-uploader.js';
+} from './azure-uploader';
 
 import type {
   AzureBlobContainerClientInterface,
   AzureBlobUploadConfig,
   FileData,
-} from '../../types/index.js';
+} from '@types';
 
 vi.mock('@azure/storage-blob', () => ({
   BlobSASPermissions: {

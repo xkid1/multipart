@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import * as root from '../src/index.js';
-import * as libs from '../src/libs/index.js';
-import * as middleware from '../src/middleware/index.js';
-import * as storageAzure from '../src/storage/azure/index.js';
-import * as storage from '../src/storage/index.js';
-import * as storageLocal from '../src/storage/local/index.js';
-import * as storageS3 from '../src/storage/s3/index.js';
-import * as utils from '../src/utils/index.js';
+import * as libs from '@libs';
+import * as middleware from '@middleware';
+import * as storage from '@storage';
+import * as utils from '@utils';
+
+import * as root from '../src';
+import * as storageAzure from '../src/storage/azure';
+import * as storageLocal from '../src/storage/local';
+import * as storageS3 from '../src/storage/s3';
 
 vi.mock('@aws-sdk/client-s3', () => ({
   PutObjectCommand: vi.fn(),

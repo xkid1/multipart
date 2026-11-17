@@ -3,7 +3,7 @@
  * @module @xkid1/multipart/types/middleware
  */
 
-import type { FileData } from '../file-data/file-data.js';
+import type { FileData } from '../file-data/file-data';
 
 /**
  * Parsed multipart form data with support for multiple files/fields per key
@@ -90,35 +90,4 @@ export interface MiddlewareError {
   field?: string;
   size?: number;
   limit?: number;
-}
-
-/**
- * Middleware context (for Express/NestJS)
- * @interface MiddlewareContext
- */
-export interface MiddlewareContext {
-  /**
-   * Parsed form data
-   */
-  body?: ParsedFormData;
-
-  /**
-   * Files grouped by field name
-   */
-  files?: Record<string, FileData | FileData[]>;
-
-  /**
-   * Text fields grouped by field name
-   */
-  fields?: Record<string, string | string[]>;
-
-  /**
-   * Middleware configuration
-   */
-  config: MiddlewareOptions;
-
-  /**
-   * Parsing error if any
-   */
-  error?: MiddlewareError;
 }

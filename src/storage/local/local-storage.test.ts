@@ -4,16 +4,16 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { LocalStorage } from './local-storage.js';
+import { LocalStorage } from './local-storage';
 import {
   deleteFromLocal,
   existsInLocal,
   getLocalFileUrl,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './local-uploader.js';
+} from './local-uploader';
 
-import type { FileData } from '../../types/index.js';
+import type { FileData } from '@types';
 
 const file = (name: string, content = 'data'): FileData => ({
   name,

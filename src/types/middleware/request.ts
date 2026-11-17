@@ -3,8 +3,8 @@
  * @module @xkid1/multipart/types/middleware
  */
 
-import type { FileData } from '../file-data/file-data.js';
-import type { MiddlewareError, ParsedFormData } from './core.js';
+import type { FileData } from '../file-data/file-data';
+import type { MiddlewareError, ParsedFormData } from './core';
 
 /** Properties the middleware attaches to the request. */
 export interface MultipartRequestProperties {

@@ -1,6 +1,6 @@
-export { extractExtension } from './extract-extension.js';
-export { extractFilename } from './extract-filename.js';
-export { DEFAULT_MIME_TYPE, extractMimeType } from './extract-mime-type.js';
-export { extractName } from './extract-name.js';
-export { findHeaderLine, getHeaderParam } from './header-params.js';
-export { parseHeaders } from './parse-headers.js';
+export { extractExtension } from './extract-extension';
+export { extractFilename } from './extract-filename';
+export { DEFAULT_MIME_TYPE, extractMimeType } from './extract-mime-type';
+export { extractName } from './extract-name';
+export { findHeaderLine, getHeaderParam } from './header-params';
+export { parseHeaders } from './parse-headers';

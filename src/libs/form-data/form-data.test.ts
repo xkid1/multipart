@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  extractBoundary,
-  firstHeaderValue,
-  isMultipartFormData,
-} from './content-type.js';
-import { isFileData, splitFormData } from './split-form-data.js';
+import { extractBoundary, firstHeaderValue, isMultipartFormData } from './content-type';
+import { isFileData, splitFormData } from './split-form-data';
 
-import type { FileData } from '../../types/index.js';
+import type { FileData } from '@types';
 
 const file = (name: string): FileData => ({
   name,

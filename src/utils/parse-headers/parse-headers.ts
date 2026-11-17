@@ -1,4 +1,4 @@
-import { findHeaderLine } from './header-params.js';
+import { findHeaderLine } from './header-params';
 
 /**
  * Parse the header block of a single multipart part.

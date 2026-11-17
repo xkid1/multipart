@@ -3,14 +3,14 @@ import {
   existsInLocal,
   getLocalFileUrl,
   uploadToLocal,
-} from './local-uploader.js';
+} from './local-uploader';
 
 import type {
   FileData,
   LocalStorageConfig,
   LocalStorageUploadResponse,
   StorageAdapter,
-} from '../../types/index.js';
+} from '@types';
 
 /**
  * Local filesystem {@link StorageAdapter}.

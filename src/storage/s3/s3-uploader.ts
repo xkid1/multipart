@@ -17,7 +17,8 @@ import {
   type PutObjectCommandInput,
 } from '@aws-sdk/client-s3';
 
-import { MultiPartError } from '../../utils/index.js';
+import { MultiPartError } from '@utils';
+
 import {
   createStorageError,
   createUniqueName,
@@ -26,14 +27,14 @@ import {
   isStorageError,
   resolveContentDisposition,
   stringProp,
-} from '../shared/index.js';
+} from '../shared';
 
 import type {
   FileData,
   S3ClientInterface,
   S3UploadConfig,
   S3UploadResponse,
-} from '../../types/index.js';
+} from '@types';
 
 /** Map an AWS SDK error (or anything else) to a {@link StorageError}. */
 const s3Error = (error: unknown, filename?: string): Error => {

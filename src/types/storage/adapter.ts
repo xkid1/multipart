@@ -3,7 +3,7 @@
  * @module @xkid1/multipart/types/storage
  */
 
-import type { FileData } from '../file-data/file-data.js';
+import type { FileData } from '../file-data/file-data';
 
 /**
  * A storage backend for parsed uploads. `LocalStorage`, `S3Storage` and

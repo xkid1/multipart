@@ -1,6 +1,6 @@
-import { MultiPartError } from '../../utils/index.js';
+import { MultiPartError } from '@utils';
 
-import type { StorageUploadError } from '../../types/index.js';
+import type { StorageUploadError } from '@types';
 
 /** An Error thrown by the storage helpers, carrying the {@link StorageUploadError} fields. */
 export type StorageError = MultiPartError & StorageUploadError;
