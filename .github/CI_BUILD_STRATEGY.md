@@ -97,7 +97,7 @@ short, stable name so it can be marked as a required check:
 | `pr-welcome.yml`             | Greets first-time contributors                                                       |
 | `stale.yml`                  | Marks inactive issues/PRs stale after 60 days, closes after 14 more                  |
 | `scorecard.yml`              | Weekly OpenSSF Scorecard; results in code scanning and the README badge              |
-| `publish.yml`                | Publishes to npm with a provenance attestation (`id-token: write`)                   |
+| `publish.yml`                | On a `v*` tag: `yarn check` + full e2e matrix, then publishes the tested tarball to npm (provenance) + GitHub Packages, creates the release |
 
 One-time settings for the automation: **Settings → General → Allow auto-merge** (for
 Dependabot auto-merge), and the dependency graph enabled (default on public repos)
