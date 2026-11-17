@@ -1,10 +1,7 @@
 /**
- * Azure Blob Storage file upload utility for multipart parsed files
+ * Azure Blob Storage for parsed multipart files.
  *
- * This module provides utilities for uploading parsed multipart files to Azure Blob Storage.
- * Azure SDK for JavaScript must be installed separately:
- *
- * @example
+ * Requires the Azure Storage SDK:
  * ```bash
  * npm install @azure/storage-blob
  * ```
@@ -12,58 +9,77 @@
  * @module @xkid1/multipart/storage/azure
  */
 
-import path from 'node:path';
-
 import {
   BlobSASPermissions,
   generateBlobSASQueryParameters,
   StorageSharedKeyCredential,
 } from '@azure/storage-blob';
 
-import { MultiPartError } from '@utils';
+import {
+  createStorageError,
+  createUniqueName,
+  errorMessage,
+  isStorageError,
+  resolveContentDisposition,
+  stringProp,
+} from '../shared/index.js';
 
 import type {
   AzureBlobContainerClientInterface,
   AzureBlobUploadConfig,
   AzureBlobUploadResponse,
   FileData,
-  StorageUploadError,
-} from '@types';
+} from '../../types/index.js';
+
+/** Map an Azure SDK `RestError` (or anything else) to a {@link StorageError}. */
+const azureError = (error: unknown, filename?: string): Error => {
+  if (isStorageError(error)) return error;
+
+  const status = (error as { statusCode?: unknown } | null)?.statusCode;
+  const message = errorMessage(error, 'Unknown Azure Blob Storage error');
+
+  return createStorageError(
+    {
+      code: stringProp(error, 'code') ?? 'AZURE_BLOB_ERROR',
+      message,
+      statusCode: typeof status === 'number' ? status : 500,
+      filename,
+      details: {
+        azureCode: (error as { code?: unknown } | null)?.code,
+        azureMessage: error instanceof Error ? error.message : undefined,
+        azureDetails: (error as { details?: unknown } | null)?.details,
+      },
+    },
+    error,
+  );
+};
+
+const validationError = (message: string, filename?: string): Error =>
+  createStorageError({
+    code: 'AZURE_VALIDATION_ERROR',
+    message,
+    statusCode: 400,
+    filename,
+  });
 
 /**
- * Upload a single file to Azure Blob Storage
+ * Upload a single file as a block blob named `<prefix><timestamp>-<random>-<filename>`.
  *
- * @param file - Parsed file data from multipart parser
- * @param containerClient - Azure BlobContainerClient instance
- * @param config - Azure Blob upload configuration
- * @returns Promise resolving to Azure Blob upload response
- * @throws {StorageUploadError} If upload fails
+ * @throws {StorageError} If validation or the upload fails
  *
  * @example
  * ```typescript
- * import { multipart } from '@xkid1/multipart/middleware/express';
- * import { uploadToAzureBlob } from '@xkid1/multipart/storage/azure';
  * import { BlobServiceClient } from '@azure/storage-blob';
+ * import { uploadToAzureBlob } from '@xkid1/multipart/storage/azure';
  *
- * const blobServiceClient = BlobServiceClient.fromConnectionString(
- *   process.env.AZURE_STORAGE_CONNECTION_STRING
- * );
- * const containerClient = blobServiceClient.getContainerClient('uploads');
+ * const container = BlobServiceClient
+ *   .fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING!)
+ *   .getContainerClient('uploads');
  *
- * app.post('/upload', multipart(), async (req, res) => {
- *   try {
- *     const file = req.files?.['file'];
- *
- *     const result = await uploadToAzureBlob(file, containerClient, {
- *       accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME,
- *       container: 'uploads',
- *       prefix: 'user-uploads/'
- *     });
- *
- *     res.json({ success: true, azure: result });
- *   } catch (error) {
- *     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
- *   }
+ * const result = await uploadToAzureBlob(req.files.avatar, container, {
+ *   accountName: 'myaccount',
+ *   container: 'uploads',
+ *   prefix: 'user-uploads/',
  * });
  * ```
  */
@@ -72,51 +88,31 @@ export async function uploadToAzureBlob(
   containerClient: AzureBlobContainerClientInterface,
   config: AzureBlobUploadConfig,
 ): Promise<AzureBlobUploadResponse> {
+  if (!Buffer.isBuffer(file?.buffer))
+    throw validationError('Invalid file data: missing buffer');
+  if (!config?.container)
+    throw validationError('Azure container name is required', file.name);
+  if (!config.accountName)
+    throw validationError('Azure account name is required', file.name);
+
+  const blobName = createUniqueName(file.name, config.prefix);
+  const mimeType = config.contentType ?? (file.mimeType || 'application/octet-stream');
+  const contentDisposition = resolveContentDisposition(
+    file.name,
+    config.contentDisposition,
+  );
+
   try {
-    if (!file?.buffer) {
-      throw new Error('Invalid file data: missing buffer');
-    }
-
-    if (!config.container) {
-      throw new Error('Azure container name is required');
-    }
-
-    if (!config.accountName) {
-      throw new Error('Azure account name is required');
-    }
-
-    // Generate blob name with sanitized filename
-    const timestamp = Date.now();
-    const sanitizedFilename = path.basename(file.name);
-    const blobName = `${config.prefix ?? ''}${timestamp}-${sanitizedFilename}`;
-
-    // Build upload options
-    const uploadOptions: Record<string, unknown> = {
+    const blobClient = containerClient.getBlockBlobClient(blobName);
+    const result = await blobClient.upload(file.buffer, file.buffer.byteLength, {
       blobHTTPHeaders: {
-        blobContentType:
-          config.contentType ?? file.mimeType ?? 'application/octet-stream',
+        blobContentType: mimeType,
+        ...(contentDisposition && { blobContentDisposition: contentDisposition }),
       },
       metadata: config.metadata ?? {},
-    };
-
-    // Add optional parameters if provided
-    if (config.tier) {
-      uploadOptions.tier = config.tier;
-    }
-
-    if (config.encryptionScope) {
-      uploadOptions.encryptionScope = config.encryptionScope;
-    }
-
-    // Get blob client and upload
-    const blobClient = containerClient.getBlockBlobClient(blobName);
-    await blobClient.upload(file.buffer, file.buffer.length, uploadOptions);
-
-    // Get blob properties for additional info
-    const properties = await blobClient.getProperties();
-
-    // Construct blob URI
-    const uri = blobClient.url;
+      ...(config.tier && { tier: config.tier }),
+      ...(config.encryptionScope && { encryptionScope: config.encryptionScope }),
+    });
 
     return {
       name: blobName,
@@ -125,25 +121,20 @@ export async function uploadToAzureBlob(
       size: file.size,
       mimeType: config.contentType ?? file.mimeType,
       filename: file.name,
-      uri,
-      etag: properties.etag ?? '',
-      lastModified: properties.lastModified ?? new Date(),
-      encryptionScope: properties.encryptionScope,
-      tier: properties.accessTier,
+      uri: blobClient.url,
+      etag: result.etag ?? '',
+      lastModified: result.lastModified ?? new Date(),
+      encryptionScope: result.encryptionScope ?? config.encryptionScope,
+      tier: config.tier,
     };
   } catch (error) {
-    throw createAzureError(error, file?.name);
+    throw azureError(error, file.name);
   }
 }
 
 /**
- * Upload multiple files to Azure Blob Storage
- *
- * @param files - Array of parsed file data
- * @param containerClient - Azure BlobContainerClient instance
- * @param config - Azure Blob upload configuration
- * @returns Promise resolving to array of Azure Blob upload responses
- * @throws {StorageUploadError} If any upload fails
+ * Upload files one after another. Rejects on the first failure; files uploaded
+ * before it are not rolled back.
  */
 export async function uploadMultipleToAzureBlob(
   files: FileData[],
@@ -151,101 +142,70 @@ export async function uploadMultipleToAzureBlob(
   config: AzureBlobUploadConfig,
 ): Promise<AzureBlobUploadResponse[]> {
   const results: AzureBlobUploadResponse[] = [];
-
   for (const file of files) {
-    const result = await uploadToAzureBlob(file, containerClient, config);
-    results.push(result);
+    results.push(await uploadToAzureBlob(file, containerClient, config));
   }
-
   return results;
 }
 
-/**
- * Delete a blob from Azure Blob Storage
- *
- * @param blobName - Blob name to delete
- * @param containerClient - Azure BlobContainerClient instance
- */
+/** Delete a blob. */
 export async function deleteFromAzureBlob(
   blobName: string,
   containerClient: AzureBlobContainerClientInterface,
 ): Promise<void> {
   try {
-    const blobClient = containerClient.getBlockBlobClient(blobName);
-    await blobClient.delete();
+    await containerClient.getBlockBlobClient(blobName).delete();
   } catch (error) {
-    throw createAzureError(error);
+    throw azureError(error);
+  }
+}
+
+/** Whether a blob exists. */
+export async function existsInAzureBlob(
+  blobName: string,
+  containerClient: AzureBlobContainerClientInterface,
+): Promise<boolean> {
+  try {
+    return await containerClient.getBlockBlobClient(blobName).exists();
+  } catch (error) {
+    throw azureError(error);
   }
 }
 
 /**
- * Generate a SAS (Shared Access Signature) URL for a blob
+ * Generate a SAS URL for a blob, signed with the storage account key.
  *
- * @param blobName - Blob name
- * @param containerClient - Azure BlobContainerClient instance
- * @param storageAccountKey - Storage account key for signing (required)
- * @param expiresOn - URL expiration date (default: 1 hour from now)
- * @returns Resolving to SAS URL string
+ * @param expiresOn - Expiry time (default: 1 hour from now)
+ * @param permissions - SAS permission letters (default: `'r'`, read-only). Only
+ *   grant more, e.g. `'rw'`, when the URL holder should be able to modify the blob.
  */
 export function getAzureBlobSasUrl(
   blobName: string,
   containerClient: AzureBlobContainerClientInterface,
   storageAccountKey: string,
   expiresOn?: Date,
+  permissions = 'r',
 ): string {
   try {
-    const expirationDate = expiresOn ?? new Date(Date.now() + 3600 * 1000);
-    const blobClient = containerClient.getBlockBlobClient(blobName);
-    const accountName = containerClient.accountName ?? '';
-    const credential = new StorageSharedKeyCredential(accountName, storageAccountKey);
-
+    if (!containerClient.accountName) {
+      throw validationError('Container client has no accountName; cannot sign a SAS URL');
+    }
+    const credential = new StorageSharedKeyCredential(
+      containerClient.accountName,
+      storageAccountKey,
+    );
     const sasQuery = generateBlobSASQueryParameters(
       {
         containerName: containerClient.containerName,
         blobName,
-        permissions: BlobSASPermissions.parse('racwd'),
-        expiresOn: expirationDate,
+        permissions: BlobSASPermissions.parse(permissions),
+        expiresOn: expiresOn ?? new Date(Date.now() + 3600 * 1000),
       },
       credential,
     ).toString();
 
-    return `${blobClient.url}?${sasQuery}`;
+    return `${containerClient.getBlockBlobClient(blobName).url}?${sasQuery}`;
   } catch (error) {
-    throw createAzureError(error);
+    throw azureError(error);
   }
-}
-
-/**
- * Create a structured Azure error object wrapped in an Error
- *
- * @param error - Original error from Azure SDK or unknown error
- * @param filename - Optional filename associated with error
- * @returns Error with StorageUploadError data
- */
-function createAzureError(error: unknown, filename?: string): Error {
-  const errorObj = (error ?? {}) as Record<string, unknown>;
-  const rawStatusCode = errorObj.statusCode;
-  const rawCode = errorObj.code;
-  const rawMessage = error instanceof Error ? error.message : errorObj.message;
-
-  const statusCode = typeof rawStatusCode === 'number' ? rawStatusCode : 500;
-  const codeValue = typeof rawCode === 'string' ? rawCode : 'AZURE_BLOB_ERROR';
-  const messageValue =
-    typeof rawMessage === 'string' ? rawMessage : 'Unknown Azure Blob Storage error';
-
-  const storageError: StorageUploadError = {
-    code: codeValue,
-    message: messageValue,
-    statusCode,
-    filename,
-    details: {
-      azureCode: rawCode,
-      azureMessage: error instanceof Error ? error.message : undefined,
-      azureDetails: errorObj.details,
-    },
-  };
-
-  const err = new MultiPartError(messageValue);
-  Object.assign(err, storageError);
-  return err;
 }

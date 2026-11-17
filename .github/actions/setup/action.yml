@@ -16,14 +16,10 @@ runs:
         fi
         corepack enable
         corepack install
-    - name: Install all dependencies (including optional)
+    # Optional peers (express, @nestjs/common, @aws-sdk/*, @azure/storage-blob) are
+    # devDependencies, so this installs them without modifying package.json.
+    - name: Install dependencies
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ github.token }}
       run: yarn install --immutable
-    - name: Install optional peer dependencies for CI build
-      shell: bash
-      run: |
-        # Install only the specified optional dependencies to avoid build failures
-        # End users will install these on their side as needed
-        yarn add --optional express @azure/storage-blob @aws-sdk/client-s3 @nestjs/common 2>/dev/null || echo "Optional dependencies installation completed (may have warnings)"

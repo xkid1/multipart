@@ -9,9 +9,9 @@ import {
   getLocalFileUrl,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './local-uploader';
+} from './local-uploader.js';
 
-import type { FileData, LocalStorageConfig } from '@types';
+import type { FileData, LocalStorageConfig } from '../../types/index.js';
 
 describe('local-uploader', () => {
   let tempDir: string;
@@ -110,7 +110,7 @@ describe('local-uploader', () => {
 
     it('should reject directory traversal attempts', async () => {
       await expect(deleteFromLocal('../outside.txt', tempDir)).rejects.toThrow(
-        'Invalid file path',
+        'File path is outside base directory',
       );
     });
 

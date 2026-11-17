@@ -1,14 +1,19 @@
-/**
- * Parse multipart headers from a header string
- * @param headerSection - The raw header section as string
- * @returns Object with contentDisposition and contentType headers
- */
-export const parseHeaders = (headerSection: string) => {
-  const headers = headerSection.split('\r\n');
-  const contentDisposition = headers.find((header) =>
-    header.startsWith('Content-Disposition'),
-  );
-  const contentType = headers.find((header) => header.startsWith('Content-Type'));
+import { findHeaderLine } from './header-params.js';
 
-  return { contentDisposition, contentType };
+/**
+ * Parse the header block of a single multipart part.
+ *
+ * Header names are matched case-insensitively, as HTTP requires.
+ *
+ * @param headerSection - The raw header block (lines separated by CRLF)
+ * @returns The full `Content-Disposition` and `Content-Type` header lines, if present
+ */
+export const parseHeaders = (
+  headerSection: string,
+): { contentDisposition: string | undefined; contentType: string | undefined } => {
+  const lines = headerSection.split('\r\n');
+  return {
+    contentDisposition: findHeaderLine(lines, 'Content-Disposition'),
+    contentType: findHeaderLine(lines, 'Content-Type'),
+  };
 };

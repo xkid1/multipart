@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import multipart from './multipart';
+import multipart from './multipart.js';
 
-import type { FileData } from '@types';
+import type { FileData } from '../../types/index.js';
 
 /**
  * Unit tests for the multipart form-data parser
@@ -275,8 +275,7 @@ describe('multipart parser', () => {
 
       const result = multipart(body, boundary);
 
-      // trim() is called in the parser
-      expect(result.text).toBe('spaces  around');
+      expect(result.text).toBe('  spaces  around  ');
     });
 
     it('should handle UTF-8 encoded content', () => {

@@ -5,15 +5,18 @@
  */
 
 // File data types
-export type { FileData, UploadedFile } from './file-data/file-data';
+export type { FileData, UploadedFile } from './file-data/file-data.js';
 
 // Middleware types
 export type {
+  ExpressMultipartOptions,
   MiddlewareContext,
   MiddlewareError,
   MiddlewareOptions,
+  MultipartRequestProperties,
   ParsedFormData,
-} from './middleware';
+  ParsedMultipartRequest,
+} from './middleware/index.js';
 
 // Storage types
 export type {
@@ -31,7 +34,8 @@ export type {
   S3StorageOptions,
   S3UploadConfig,
   S3UploadResponse,
+  StorageAdapter,
   StorageErrorHandler,
   StorageUploadError,
   StorageUploadResponse,
-} from './storage';
+} from './storage/index.js';

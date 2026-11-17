@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseMultipartWithDuplicates } from './parse-multipart';
+import { parseMultipartWithDuplicates } from './parse-multipart.js';
 
-import type { MiddlewareOptions } from '@types';
+import type { MiddlewareOptions } from '../../types/index.js';
 
 describe('parseMultipartWithDuplicates', () => {
   describe('Single field parsing', () => {

@@ -1,17 +1,6 @@
-import { fileURLToPath } from 'node:url';
-
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@utils': fileURLToPath(new URL('./src/utils/index.ts', import.meta.url)),
-      '@libs': fileURLToPath(new URL('./src/libs/index.ts', import.meta.url)),
-      '@middleware': fileURLToPath(new URL('./src/middleware/index.ts', import.meta.url)),
-      '@storage': fileURLToPath(new URL('./src/storage/index.ts', import.meta.url)),
-      '@types': fileURLToPath(new URL('./src/types/index.ts', import.meta.url)),
-    },
-  },
   test: {
     environment: 'node',
     globals: false,
@@ -37,6 +26,8 @@ export default defineConfig({
         'src/storage/*/index.ts',
         'src/utils/index.ts',
         'src/utils/*/index.ts',
+        'src/storage/shared/index.ts',
+        'src/types/middleware/request.ts',
         'src/server.ts',
         'src/**/migrations/**',
         'src/**/types/**',

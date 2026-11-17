@@ -1,0 +1,16 @@
+{
+  "$comment": "What a typical application installs next to @xkid1/multipart. Ranges, not pins: the suite should catch breakage from new releases of these packages.",
+  "dependencies": [
+    "express@^5",
+    "express4@npm:express@^4",
+    "@nestjs/common@^11",
+    "@nestjs/core@^11",
+    "@nestjs/platform-express@^11",
+    "reflect-metadata@^0.2",
+    "rxjs@^7",
+    "@aws-sdk/client-s3@^3",
+    "@aws-sdk/s3-request-presigner@^3",
+    "@azure/storage-blob@^12"
+  ],
+  "devDependencies": ["typescript@~5.9", "@types/node@^22", "@types/express@^5"]
+}

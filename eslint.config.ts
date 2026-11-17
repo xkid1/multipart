@@ -29,6 +29,8 @@ export default defineConfig(
       '**/*.min.js',
       '**/*.d.ts',
       'examples/**',
+      // End-user suite: runs inside a temporary consumer project (see e2e/run.mjs).
+      'e2e/**',
       'src/middleware/express/**',
       'src/middleware/nestjs/**',
     ],

@@ -55,14 +55,14 @@ trap cleanup EXIT
 # Step 1: Verify library is built
 echo -e "\n${YELLOW}=== Step 1: Verifying Library Build ===${NC}"
 
-if [ ! -f "${PROJECT_ROOT}/dist/index.js" ]; then
+if [ ! -f "${PROJECT_ROOT}/dist/esm/index.js" ]; then
   echo -e "${YELLOW}ℹ Building library...${NC}"
   cd "${PROJECT_ROOT}"
   yarn build
   cd - > /dev/null
 fi
 
-if [ -f "${PROJECT_ROOT}/dist/index.js" ]; then
+if [ -f "${PROJECT_ROOT}/dist/esm/index.js" ]; then
   echo -e "${GREEN}✓ Library built successfully${NC}"
 else
   echo -e "${RED}✗ Library build failed${NC}"
@@ -94,7 +94,7 @@ echo -e "${GREEN}✓ Created package.json${NC}"
 # Create Express server with multipart middleware
 cat > "${TEST_DIR}/server.mjs" << 'SERVEREOF'
 import express from 'express';
-import { multipart, MultiPartError } from '../dist/index.js';
+import { multipart, MultiPartError } from '../dist/esm/index.js';
 import fs from 'fs';
 import path from 'path';
 

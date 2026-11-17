@@ -12,7 +12,7 @@ export type {
   S3UploadResponse,
   StorageUploadError,
   StorageUploadResponse,
-} from './config';
+} from './config.js';
 
 export type {
   AzureBlobClientInterface,
@@ -24,4 +24,6 @@ export type {
   S3ClientInterface,
   S3StorageOptions,
   StorageErrorHandler,
-} from './options';
+} from './options.js';
+
+export type { StorageAdapter } from './adapter.js';

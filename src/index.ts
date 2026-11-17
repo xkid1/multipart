@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-deprecated -- deprecated helpers stay exported for backward compatibility */
 /**
  * @xkid1/multipart - Zero-dependency multipart form-data parser
  *
@@ -7,7 +8,7 @@
  *
  * @example
  * ```typescript
- * import multipart from '@xkid1/multipart';
+ * import { multipart } from '@xkid1/multipart';
  *
  * const body = Buffer.from('...');
  * const boundary = 'something1234567890';
@@ -20,7 +21,7 @@
  * //     mimeType: 'text/plain',
  * //     encoding: 'utf-8',
  * //     size: 1024,
- * //     extension: 'txt',
+ * //     extension: '.txt',
  * //     buffer: Buffer<...>
  * //   }
  * // }
@@ -29,19 +30,48 @@
  * @module @xkid1/multipart
  */
 
-// Main parser function
-export { default as multipart } from '@libs';
+// Parsers
+export {
+  DEFAULT_LIMITS,
+  extractBoundary,
+  isFileData,
+  isMimeTypeAllowed,
+  isMultipartFormData,
+  multipart,
+  parseMultipartWithDuplicates,
+  splitFormData,
+  type SplitFormData,
+} from './libs/index.js';
 
-// Middleware exports
-export { multipartExpress, parseMultipartWithDuplicates } from '@middleware';
+// Express middleware and framework-agnostic request parsing.
+// NestJS lives in '@xkid1/multipart/middleware/nestjs' (it needs @nestjs/common at runtime).
+export {
+  getField,
+  getFile,
+  hasFiles,
+  multipartErrorHandler,
+  multipartExpress,
+  parseMultipartRequest,
+  readRequestBody,
+  toMiddlewareError,
+  type RequestLike,
+} from './middleware/index.js';
 
-// Local storage exports (no external dependencies required)
+// Local storage (no external dependencies). S3 and Azure: see their subpaths.
 export {
   deleteFromLocal,
+  existsInLocal,
   getLocalFileUrl,
+  LocalStorage,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './storage/local';
+} from './storage/local/index.js';
+export {
+  buildContentDisposition,
+  isStorageError,
+  sanitizeFilename,
+  type StorageError,
+} from './storage/shared/index.js';
 
 // Utilities (advanced usage)
 export {
@@ -52,19 +82,25 @@ export {
   extractName,
   extractPart,
   findNextBoundary,
+  iterateParts,
   Logger,
   MultiPartError,
+  MultiPartErrorCode,
   parseHeaders,
   shouldSkipPart,
   splitPartSections,
   type LogLevel,
-} from '@utils';
+  type MultiPartErrorCodeValue,
+  type RawPart,
+} from './utils/index.js';
 
-// Storage types and handlers and utilities
+// Types
 export type {
+  AzureBlobContainerClientInterface,
   AzureBlobStorageOptions,
   AzureBlobUploadConfig,
   AzureBlobUploadResponse,
+  ExpressMultipartOptions,
   FileData,
   LocalStorageConfig,
   LocalStorageOptions,
@@ -72,10 +108,15 @@ export type {
   MiddlewareContext,
   MiddlewareError,
   MiddlewareOptions,
+  MultipartRequestProperties,
   ParsedFormData,
+  ParsedMultipartRequest,
+  S3ClientInterface,
   S3StorageOptions,
   S3UploadConfig,
   S3UploadResponse,
+  StorageAdapter,
   StorageUploadError,
   StorageUploadResponse,
-} from '@types';
+  UploadedFile,
+} from './types/index.js';

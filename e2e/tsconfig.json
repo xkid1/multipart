@@ -1,0 +1,18 @@
+{
+  // Editor settings for the e2e harness only. The scenarios import
+  // @xkid1/multipart, which exists only inside the temporary consumer project
+  // that e2e/run.mjs creates, so they are not type-checked from the repo.
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "types": ["node"],
+    "typeRoots": ["../node_modules/@types"]
+  },
+  "include": ["*.mjs", "scenarios/**/*"]
+}

@@ -1,13 +1,19 @@
 {
   "name": "@xkid1/multipart",
   "version": "0.2.0",
-  "description": "Form body parser middleware for Node.js in pure TypeScript.",
+  "description": "Multipart/form-data parser for Node.js with Express and NestJS middleware and Local, AWS S3 and Azure Blob storage. Pure TypeScript, zero runtime dependencies.",
   "keywords": [
-    "formbodyparser",
-    "form",
-    "body",
+    "multipart",
+    "form-data",
+    "multipart/form-data",
+    "file-upload",
+    "upload",
     "parser",
     "middleware",
+    "express",
+    "nestjs",
+    "s3",
+    "azure-blob",
     "typescript"
   ],
   "homepage": "https://github.com/xkid1/multipart#readme",
@@ -20,42 +26,88 @@
   "author": "xkid1",
   "type": "module",
   "sideEffects": false,
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "tsd": {
-    "directory": "./global.d.ts"
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "middleware/express": [
+        "./dist/cjs/middleware/express/index.d.ts"
+      ],
+      "middleware/nestjs": [
+        "./dist/cjs/middleware/nestjs/index.d.ts"
+      ],
+      "storage/local": [
+        "./dist/cjs/storage/local/index.d.ts"
+      ],
+      "storage/s3": [
+        "./dist/cjs/storage/s3/index.d.ts"
+      ],
+      "storage/azure": [
+        "./dist/cjs/storage/azure/index.d.ts"
+      ]
+    }
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
     },
     "./middleware/express": {
-      "types": "./dist/middleware/express/index.d.ts",
-      "import": "./dist/middleware/express/index.js",
-      "default": "./dist/middleware/express/index.js"
+      "import": {
+        "types": "./dist/esm/middleware/express/index.d.ts",
+        "default": "./dist/esm/middleware/express/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/middleware/express/index.d.ts",
+        "default": "./dist/cjs/middleware/express/index.js"
+      }
     },
     "./middleware/nestjs": {
-      "types": "./dist/middleware/nestjs/index.d.ts",
-      "import": "./dist/middleware/nestjs/index.js",
-      "default": "./dist/middleware/nestjs/index.js"
+      "import": {
+        "types": "./dist/esm/middleware/nestjs/index.d.ts",
+        "default": "./dist/esm/middleware/nestjs/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/middleware/nestjs/index.d.ts",
+        "default": "./dist/cjs/middleware/nestjs/index.js"
+      }
     },
     "./storage/local": {
-      "types": "./dist/storage/local/index.d.ts",
-      "import": "./dist/storage/local/index.js",
-      "default": "./dist/storage/local/index.js"
+      "import": {
+        "types": "./dist/esm/storage/local/index.d.ts",
+        "default": "./dist/esm/storage/local/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/storage/local/index.d.ts",
+        "default": "./dist/cjs/storage/local/index.js"
+      }
     },
     "./storage/s3": {
-      "types": "./dist/storage/s3/index.d.ts",
-      "import": "./dist/storage/s3/index.js",
-      "default": "./dist/storage/s3/index.js"
+      "import": {
+        "types": "./dist/esm/storage/s3/index.d.ts",
+        "default": "./dist/esm/storage/s3/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/storage/s3/index.d.ts",
+        "default": "./dist/cjs/storage/s3/index.js"
+      }
     },
     "./storage/azure": {
-      "types": "./dist/storage/azure/index.d.ts",
-      "import": "./dist/storage/azure/index.js",
-      "default": "./dist/storage/azure/index.js"
+      "import": {
+        "types": "./dist/esm/storage/azure/index.d.ts",
+        "default": "./dist/esm/storage/azure/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/storage/azure/index.d.ts",
+        "default": "./dist/cjs/storage/azure/index.js"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -72,8 +124,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "yarn clean && yarn build:js && yarn build:types",
-    "build:js": "swc src -d dist --strip-leading-paths --ignore \"**/*.test.ts,**/*.spec.ts,**/*.d.ts\"",
+    "build": "yarn clean && yarn build:esm && yarn build:cjs && yarn build:types && node scripts/finalize-build.mjs",
+    "build:esm": "swc src -d dist/esm --strip-leading-paths --ignore \"**/*.test.ts,**/*.spec.ts,**/*.d.ts\"",
+    "build:cjs": "swc src -d dist/cjs --strip-leading-paths -C module.type=commonjs --ignore \"**/*.test.ts,**/*.spec.ts,**/*.d.ts\"",
     "build:types": "tsc -p tsconfig.build.json",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "typecheck": "tsc --noEmit",
@@ -84,13 +137,23 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
+    "e2e": "node e2e/run.mjs",
+    "e2e:emulators": "bash e2e/emulators.sh",
+    "e2e:matrix": "bash e2e/docker-matrix.sh",
     "check": "yarn format:check && yarn lint && yarn typecheck && yarn coverage && yarn build",
     "prepack": "yarn build"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3",
+    "@aws-sdk/s3-request-presigner": "^3",
+    "@azure/storage-blob": "^12",
     "@eslint/js": "^10.0.1",
+    "@nestjs/common": "^11",
+    "@nestjs/core": "^11",
+    "@nestjs/platform-express": "^11",
     "@swc/cli": "^0.8.2",
     "@swc/core": "^1.16.22",
+    "@types/express": "^5",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
     "@vitest/eslint-plugin": "^1.6.28",
@@ -100,9 +163,12 @@
     "eslint-plugin-import-x": "^4.18.0",
     "eslint-plugin-n": "^18.5.0",
     "eslint-plugin-security": "^4.2.1",
+    "express": "^5",
     "globals": "^17.14.0",
     "jiti": "^2.7.0",
     "prettier": "^3.9.10",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.6",
@@ -110,12 +176,16 @@
   },
   "peerDependencies": {
     "@aws-sdk/client-s3": ">=3.0.0",
+    "@aws-sdk/s3-request-presigner": ">=3.0.0",
     "@azure/storage-blob": ">=12.0.0",
     "@nestjs/common": ">=10.0.0",
     "express": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@aws-sdk/s3-request-presigner": {
       "optional": true
     },
     "@azure/storage-blob": {

@@ -1,8 +1,7 @@
 /**
- * Local filesystem storage uploader
+ * Local filesystem storage for parsed multipart files.
  *
- * Saves uploaded files to the local filesystem with configurable permissions,
- * naming, and directory structure.
+ * Uses only Node.js built-ins; no extra dependency is needed.
  *
  * @module @xkid1/multipart/storage/local
  */
@@ -10,49 +9,121 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { MultiPartError } from '@utils';
+import {
+  createStorageError,
+  createUniqueName,
+  errorMessage,
+  isStorageError,
+  sanitizeFilename,
+  stringProp,
+} from '../shared/index.js';
 
 import type {
   FileData,
   LocalStorageConfig,
   LocalStorageUploadResponse,
   StorageUploadError,
-} from '@types';
+} from '../../types/index.js';
+
+/** Upper bound on `name-N.ext` attempts before giving up. */
+const MAX_NAME_ATTEMPTS = 1000;
 
 /**
- * Wrap a StorageUploadError in an Error object for throwing
- *
- * @param storageError - The StorageUploadError to wrap
- * @returns Error object with StorageUploadError properties
+ * Resolve `relativePath` under `root`, rejecting anything that escapes it
+ * (`../`, or a sibling directory such as `/uploads-evil` for root `/uploads`).
+ * Absolute inputs are treated as relative to `root`.
  */
-function wrapStorageError(storageError: StorageUploadError): Error {
-  const err = new MultiPartError(storageError.message);
-  Object.assign(err, storageError);
-  return err;
-}
+const resolveInside = (root: string, relativePath: string): string => {
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(path.join(resolvedRoot, relativePath));
+  const relative = path.relative(resolvedRoot, resolved);
+
+  if (
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    throw new Error('File path is outside base directory');
+  }
+  return resolved;
+};
+
+/** Convert a path relative to `root` into the `/`-separated form we return. */
+const toPosixRelative = (root: string, absolutePath: string): string =>
+  path.relative(path.resolve(root), absolutePath).split(path.sep).join('/');
+
+/** Candidate names: `a.txt`, `a-1.txt`, `a-2.txt`, ... */
+const candidateName = (filename: string, attempt: number): string => {
+  if (attempt === 0) return filename;
+  const extension = path.extname(filename);
+  return `${filename.slice(0, filename.length - extension.length)}-${attempt}${extension}`;
+};
 
 /**
- * Upload a single file to local filesystem
+ * Write `data` into `directory` under `filename`. Unless `overwrite` is set,
+ * an existing file is never replaced; a numeric suffix is added instead. The
+ * exclusive `wx` flag makes this safe under concurrent uploads.
+ */
+const writeWithoutClobbering = async (
+  directory: string,
+  filename: string,
+  data: Buffer,
+  overwrite: boolean,
+): Promise<string> => {
+  if (overwrite) {
+    const target = path.join(directory, filename);
+    await fs.writeFile(target, data);
+    return target;
+  }
+
+  for (let attempt = 0; attempt < MAX_NAME_ATTEMPTS; attempt++) {
+    const target = path.join(directory, candidateName(filename, attempt));
+    try {
+      await fs.writeFile(target, data, { flag: 'wx' });
+      return target;
+    } catch (error) {
+      if (stringProp(error, 'code') !== 'EEXIST') throw error;
+    }
+  }
+  throw new Error(`Could not find a free filename for ${filename}`);
+};
+
+/** Wrap any failure into a {@link StorageError} with Node's error code if available. */
+const localError = (
+  error: unknown,
+  fallbackCode: string,
+  fallbackMessage: string,
+  filename?: string,
+): Error => {
+  if (isStorageError(error)) return error;
+  return createStorageError(
+    {
+      code: stringProp(error, 'code') ?? fallbackCode,
+      message: errorMessage(error, fallbackMessage),
+      statusCode: 500,
+      filename,
+      details: { error: errorMessage(error, String(error)) },
+    },
+    error,
+  );
+};
+
+/**
+ * Save a single file to the local filesystem.
  *
- * @param file - File data to upload
- * @param config - Local storage configuration
- * @returns Upload response with file path and metadata
+ * The client-supplied filename is reduced to a safe basename, so it can never
+ * write outside `directory`.
  *
- * @throws StorageUploadError if upload fails
+ * @throws {StorageError} If validation or the write fails
  *
  * @example
  * ```typescript
- * import { uploadToLocal } from '@xkid1/multipart/storage/local';
- *
- * const config: LocalStorageConfig = {
+ * const saved = await uploadToLocal(req.files.avatar, {
  *   directory: '/var/uploads',
- *   prefix: 'user-123/',
- *   permissions: 0o644
- * };
- *
- * const response = await uploadToLocal(fileData, config);
- * console.log(response.path); // 'user-123/document.pdf'
- * console.log(response.absolutePath); // '/var/uploads/user-123/document.pdf'
+ *   prefix: 'user-123',
+ * });
+ * saved.path;         // 'user-123/avatar.png' (or 'user-123/avatar-1.png' if taken)
+ * saved.absolutePath; // '/var/uploads/user-123/avatar.png'
  * ```
  */
 export async function uploadToLocal(
@@ -60,106 +131,65 @@ export async function uploadToLocal(
   config: LocalStorageConfig,
 ): Promise<LocalStorageUploadResponse> {
   try {
-    if (!file?.buffer) {
-      throw new Error('File data is required');
-    }
+    if (!Buffer.isBuffer(file?.buffer)) throw new Error('File data is required');
+    if (!config?.directory) throw new Error('Storage directory is required');
 
-    if (!config.directory) {
-      throw new Error('Storage directory is required');
-    }
+    const targetDirectory = resolveInside(config.directory, config.prefix ?? '');
+    const filename =
+      config.preserveFilename === false
+        ? createUniqueName(file.name)
+        : sanitizeFilename(file.name);
 
-    // Sanitize filename to prevent directory traversal
-    const basename = path.basename(file.name);
+    await fs.mkdir(targetDirectory, { recursive: true });
+    const absolutePath = await writeWithoutClobbering(
+      targetDirectory,
+      filename,
+      file.buffer,
+      config.overwrite ?? false,
+    );
 
-    // Build final path with prefix
-    const prefix = config.prefix ? config.prefix.replace(/\/$/, '') : '';
-    const relativePath = prefix ? `${prefix}/${basename}` : basename;
-    const absolutePath = path.join(config.directory, relativePath);
-
-    // Ensure the directory exists
-    const dirPath = path.dirname(absolutePath);
-    await fs.mkdir(dirPath, { recursive: true });
-
-    // Write file to disk
-    await fs.writeFile(absolutePath, file.buffer);
-
-    // Apply permissions if specified
-    if (config.permissions) {
+    if (config.permissions !== undefined)
       await fs.chmod(absolutePath, config.permissions);
-    }
-
-    // Get file stats
     const stats = await fs.stat(absolutePath);
 
     return {
-      path: relativePath,
+      path: toPosixRelative(config.directory, absolutePath),
       absolutePath,
       size: stats.size,
       mimeType: file.mimeType || 'application/octet-stream',
       filename: file.name,
       extension: file.extension,
-      permissions: config.permissions ?? 0o644,
+      permissions: stats.mode & 0o777,
       createdAt: stats.mtime,
     };
   } catch (error) {
-    const rawCode = (error as Record<string, unknown> | null)?.code;
-    const storageError: StorageUploadError = {
-      code: typeof rawCode === 'string' ? rawCode : 'LOCAL_UPLOAD_ERROR',
-      message:
-        error instanceof Error ? error.message : 'Failed to upload file to local storage',
-      statusCode: 500,
-      filename: file ? file.name : undefined,
-      details: {
-        error: error instanceof Error ? error.message : String(error),
-      },
-    };
-    throw wrapStorageError(storageError);
+    throw localError(
+      error,
+      'LOCAL_UPLOAD_ERROR',
+      'Failed to upload file to local storage',
+      file?.name,
+    );
   }
 }
 
 /**
- * Upload multiple files to local filesystem
+ * Save several files, continuing past failures.
  *
- * @param files - Array of files to upload
- * @param config - Local storage configuration
- * @returns Array of successful uploads and any errors
- *
- * @example
- * ```typescript
- * const results = await uploadMultipleToLocal(fileArray, config);
- * results.successful.forEach(upload => {
- *   console.log('Uploaded:', upload.filename, 'to', upload.path);
- * });
- * results.errors.forEach(error => {
- *   console.error('Failed:', error.filename, error.message);
- * });
- * ```
+ * @returns The successful uploads, plus one {@link StorageUploadError} per failure
  */
 export async function uploadMultipleToLocal(
   files: FileData[],
   config: LocalStorageConfig,
-): Promise<{
-  successful: LocalStorageUploadResponse[];
-  errors: StorageUploadError[];
-}> {
+): Promise<{ successful: LocalStorageUploadResponse[]; errors: StorageUploadError[] }> {
   const successful: LocalStorageUploadResponse[] = [];
   const errors: StorageUploadError[] = [];
 
   for (const file of files) {
     try {
-      const result = await uploadToLocal(file, config);
-      successful.push(result);
+      successful.push(await uploadToLocal(file, config));
     } catch (error) {
-      if (error instanceof Error && 'code' in error) {
-        const storageError = error as unknown as StorageUploadError;
-        errors.push(storageError);
-      } else {
-        errors.push({
-          code: 'LOCAL_UPLOAD_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          statusCode: 500,
-        });
-      }
+      // uploadToLocal always throws a StorageError.
+      errors.push(error as StorageUploadError);
     }
   }
 
@@ -167,18 +197,10 @@ export async function uploadMultipleToLocal(
 }
 
 /**
- * Delete a file from local filesystem
+ * Delete a file previously saved under `baseDirectory`.
  *
- * @param filePath - Relative path to the file
- * @param baseDirectory - Base directory for storage
- * @returns Confirmation of deletion
- *
- * @throws StorageUploadError if deletion fails
- *
- * @example
- * ```typescript
- * await deleteFromLocal('user-123/old-file.pdf', '/var/uploads');
- * ```
+ * @param filePath - Path relative to `baseDirectory` (as returned in `response.path`)
+ * @throws {StorageError} If the path escapes `baseDirectory` or deletion fails
  */
 export async function deleteFromLocal(
   filePath: string,
@@ -189,63 +211,50 @@ export async function deleteFromLocal(
       throw new Error('File path and base directory are required');
     }
 
-    // Prevent directory traversal attacks
-    const sanitizedPath = path.normalize(filePath);
-    if (sanitizedPath.startsWith('..')) {
+    const absolutePath = resolveInside(baseDirectory, filePath);
+    if (absolutePath === path.resolve(baseDirectory))
       throw new Error('Invalid file path');
-    }
-
-    const absolutePath = path.join(baseDirectory, sanitizedPath);
-
-    // Verify the path is within baseDirectory
-    const resolvedBase = path.resolve(baseDirectory);
-    const resolvedPath = path.resolve(absolutePath);
-    if (!resolvedPath.startsWith(resolvedBase)) {
-      throw new Error('File path is outside base directory');
-    }
 
     await fs.unlink(absolutePath);
-
-    return {
-      success: true,
-      path: sanitizedPath,
-    };
+    return { success: true, path: toPosixRelative(baseDirectory, absolutePath) };
   } catch (error) {
-    const rawCode = (error as Record<string, unknown> | null)?.code;
-    const storageError: StorageUploadError = {
-      code: typeof rawCode === 'string' ? rawCode : 'LOCAL_DELETE_ERROR',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete file from local storage',
-      statusCode: 500,
-      filename: filePath,
-      details: {
-        error: error instanceof Error ? error.message : String(error),
-      },
-    };
-    throw wrapStorageError(storageError);
+    throw localError(
+      error,
+      'LOCAL_DELETE_ERROR',
+      'Failed to delete file from local storage',
+      filePath,
+    );
   }
 }
 
 /**
- * Get a public URL for a local file
- *
- * Constructs a URL based on the base URL and relative file path.
- * Useful for serving files via a web server.
- *
- * @param filePath - Relative path to the file
- * @param baseUrl - Public base URL (e.g., 'https://example.com/uploads')
- * @returns Public URL for the file
+ * Whether a file exists under `baseDirectory`. Paths that escape it return `false`.
+ */
+export async function existsInLocal(
+  filePath: string,
+  baseDirectory: string,
+): Promise<boolean> {
+  try {
+    const stats = await fs.stat(resolveInside(baseDirectory, filePath));
+    return stats.isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build a public URL for a stored file, percent-encoding each path segment.
  *
  * @example
- * ```typescript
- * const url = getLocalFileUrl('user-123/document.pdf', 'https://cdn.example.com/uploads');
- * // Returns: 'https://cdn.example.com/uploads/user-123/document.pdf'
- * ```
+ * getLocalFileUrl('user 1/report.pdf', 'https://cdn.example.com/uploads/');
+ * // 'https://cdn.example.com/uploads/user%201/report.pdf'
  */
 export function getLocalFileUrl(filePath: string, baseUrl: string): string {
-  const cleanPath = filePath.replace(/\\/g, '/');
-  const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-  return `${cleanBaseUrl}/${cleanPath}`;
+  const encodedPath = filePath
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join('/');
+  return `${baseUrl.replace(/\/+$/, '')}/${encodedPath}`;
 }

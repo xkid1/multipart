@@ -1,12 +1,12 @@
 /**
- * Middleware exports - Optional framework-specific imports
+ * Framework-agnostic middleware exports.
  *
- * Export only the types and core parser
- * Framework-specific middleware can be imported from:
- * - @xkid1/multipart/middleware/express
- * - @xkid1/multipart/middleware/nestjs
- *
+ * The Express middleware is re-exported here because it has no runtime dependency
+ * on Express. The NestJS middleware imports `@nestjs/common` at runtime, so it is
+ * only available from `@xkid1/multipart/middleware/nestjs`.
  */
 
-export * from './core/parse-multipart';
-export * from './express';
+export { parseMultipartWithDuplicates } from '../libs/index.js';
+export * from './express/index.js';
+export { parseMultipartRequest, toMiddlewareError } from './shared/parse-request.js';
+export { readRequestBody, type RequestLike } from './shared/read-request-body.js';

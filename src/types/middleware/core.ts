@@ -25,7 +25,8 @@ export interface MiddlewareOptions {
   maxSize?: number;
 
   /**
-   * Allowed MIME types for file uploads (default: all)
+   * Allowed MIME types for file uploads (default: all). Case-insensitive;
+   * a wildcard subtype such as `image/*` is supported.
    * @example ['image/jpeg', 'image/png', 'application/pdf']
    */
   allowedMimeTypes?: string[];
@@ -43,7 +44,8 @@ export interface MiddlewareOptions {
   maxFiles?: number;
 
   /**
-   * Enable debug logging (default: false)
+   * Log a line per parsed field/file (names and sizes only, never values).
+   * @default false
    */
   debug?: boolean;
 
@@ -61,10 +63,27 @@ export interface MiddlewareOptions {
 }
 
 /**
+ * Options for the Express middleware.
+ * @interface ExpressMultipartOptions
+ */
+export interface ExpressMultipartOptions extends MiddlewareOptions {
+  /**
+   * How parse errors are reported:
+   * - `'attach'` (default): set `req.multipartError` and call `next()`, so the
+   *   route handler decides how to respond.
+   * - `'next'`: call `next(error)` with a {@link MultiPartError} carrying
+   *   `statusCode`, for Express error handlers such as `multipartErrorHandler`.
+   * @default 'attach'
+   */
+  onError?: 'attach' | 'next';
+}
+
+/**
  * Middleware error information
  * @interface MiddlewareError
  */
 export interface MiddlewareError {
+  /** Error code; see `MultiPartErrorCode`. */
   code: string;
   message: string;
   statusCode: number;
