@@ -1,0 +1,29 @@
+name: Dependency review
+
+# Blocks pull requests that add or upgrade to a package version with a known
+# vulnerability. Runs on the lockfile diff, so it also covers transitive packages.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write # post the summary comment when the check fails
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure
+          show-openssf-scorecard: true
