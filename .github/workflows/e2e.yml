@@ -30,8 +30,24 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Skips the suite when only *.md / *.yml files changed. Always runs for
+  # publish.yml (tag push), manual runs and other events; see the action.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changes
+        uses: ./.github/actions/changes
+
   pack:
     name: Pack tarball
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     outputs:
       tarball: ${{ steps.pack.outputs.tarball }}
@@ -94,14 +110,20 @@ jobs:
   # One stable status check to mark as required, whatever the matrix contains.
   e2e:
     name: E2E
-    needs: [pack, matrix]
+    needs: [changes, pack, matrix]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: All end-user test jobs passed
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
           PACK_RESULT: ${{ needs.pack.result }}
           MATRIX_RESULT: ${{ needs.matrix.result }}
         run: |
-          echo "pack: $PACK_RESULT, matrix: $MATRIX_RESULT"
+          echo "changes: $CHANGES_RESULT (code=$CODE), pack: $PACK_RESULT, matrix: $MATRIX_RESULT"
+          if [ "$CHANGES_RESULT" = success ] && [ "$CODE" = false ]; then
+            echo "Only docs/config changed; end-user suite skipped."
+            exit 0
+          fi
           [ "$PACK_RESULT" = success ] && [ "$MATRIX_RESULT" = success ]

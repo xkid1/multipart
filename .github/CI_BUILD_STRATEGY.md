@@ -86,6 +86,22 @@ short, stable name so it can be marked as a required check:
 | `pr-title.yml`   | `PR title`  | Conventional Commits title (`feat:`, `fix(parser):`, …)              | optional |
 | `codeql.yml`     | `Analyze (…)` | CodeQL security + code-quality queries (TypeScript and workflows)   | optional |
 
+### Docs-only changes skip the code checks
+
+`ci.yml`, `test.yml`, `build.yml` and `e2e.yml` start with a `Changes` job
+(`.github/actions/changes`). When a pull request or push to `main` only touches
+`*.md`, `*.yml` or `*.yaml` files, `Lint`, `Typecheck`, `Format`, `Test`, `Build`,
+`Package` and the E2E matrix are skipped, and the `E2E` summary passes. Skipped jobs
+count as passed for required checks, so docs-only PRs can still merge.
+
+Exceptions that always run everything: `.yarnrc.yml` and `.github/actions/**`
+(they change how dependencies install), tag pushes and `publish.yml` (a release is
+always fully tested), manual runs and scheduled runs. CodeQL, dependency review,
+PR title and the labeler are not affected.
+
+The workflows use `paths-ignore` nowhere on purpose: a workflow that never starts
+leaves its required checks "Pending" and blocks the merge.
+
 ### Repository automation
 
 | Workflow / config            | What it does                                                                         |
