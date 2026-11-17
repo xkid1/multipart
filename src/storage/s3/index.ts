@@ -3,14 +3,14 @@
  * @module @xkid1/multipart/storage/s3
  */
 
-export { S3Storage } from './s3-storage.js';
+export { S3Storage } from './s3-storage';
 export {
   deleteFromS3,
   existsInS3,
   getS3PresignedUrl,
   uploadMultipleToS3,
   uploadToS3,
-} from './s3-uploader.js';
+} from './s3-uploader';
 
 export type {
   FileData,
@@ -19,5 +19,5 @@ export type {
   S3UploadResponse,
   StorageAdapter,
   StorageUploadError,
-} from '../../types/index.js';
-export type { StorageError } from '../shared/index.js';
+} from '@types';
+export type { StorageError } from '../shared';

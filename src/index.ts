@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-deprecated -- deprecated helpers stay exported for backward compatibility */
 /**
  * @xkid1/multipart - Zero-dependency multipart form-data parser
  *
@@ -41,7 +40,7 @@ export {
   parseMultipartWithDuplicates,
   splitFormData,
   type SplitFormData,
-} from './libs/index.js';
+} from '@libs';
 
 // Express middleware and framework-agnostic request parsing.
 // NestJS lives in '@xkid1/multipart/middleware/nestjs' (it needs @nestjs/common at runtime).
@@ -55,7 +54,7 @@ export {
   readRequestBody,
   toMiddlewareError,
   type RequestLike,
-} from './middleware/index.js';
+} from '@middleware';
 
 // Local storage (no external dependencies). S3 and Azure: see their subpaths.
 export {
@@ -65,13 +64,13 @@ export {
   LocalStorage,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './storage/local/index.js';
+} from './storage/local';
 export {
   buildContentDisposition,
   isStorageError,
   sanitizeFilename,
   type StorageError,
-} from './storage/shared/index.js';
+} from './storage/shared';
 
 // Utilities (advanced usage)
 export {
@@ -80,43 +79,34 @@ export {
   extractFilename,
   extractMimeType,
   extractName,
-  extractPart,
-  findNextBoundary,
   iterateParts,
   Logger,
   MultiPartError,
   MultiPartErrorCode,
   parseHeaders,
-  shouldSkipPart,
   splitPartSections,
   type LogLevel,
   type MultiPartErrorCodeValue,
   type RawPart,
-} from './utils/index.js';
+} from '@utils';
 
 // Types
 export type {
   AzureBlobContainerClientInterface,
-  AzureBlobStorageOptions,
   AzureBlobUploadConfig,
   AzureBlobUploadResponse,
   ExpressMultipartOptions,
   FileData,
   LocalStorageConfig,
-  LocalStorageOptions,
   LocalStorageUploadResponse,
-  MiddlewareContext,
   MiddlewareError,
   MiddlewareOptions,
   MultipartRequestProperties,
   ParsedFormData,
   ParsedMultipartRequest,
   S3ClientInterface,
-  S3StorageOptions,
   S3UploadConfig,
   S3UploadResponse,
   StorageAdapter,
   StorageUploadError,
-  StorageUploadResponse,
-  UploadedFile,
-} from './types/index.js';
+} from '@types';

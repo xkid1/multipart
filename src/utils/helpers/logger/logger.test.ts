@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import Logger from './logger.js';
+import Logger from './logger';
 
 function setIsTTY(value: boolean): () => void {
   const descriptor = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');

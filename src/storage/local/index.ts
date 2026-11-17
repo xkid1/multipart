@@ -3,14 +3,14 @@
  * @module @xkid1/multipart/storage/local
  */
 
-export { LocalStorage } from './local-storage.js';
+export { LocalStorage } from './local-storage';
 export {
   deleteFromLocal,
   existsInLocal,
   getLocalFileUrl,
   uploadMultipleToLocal,
   uploadToLocal,
-} from './local-uploader.js';
+} from './local-uploader';
 
 export type {
   FileData,
@@ -18,5 +18,5 @@ export type {
   LocalStorageUploadResponse,
   StorageAdapter,
   StorageUploadError,
-} from '../../types/index.js';
-export type { StorageError } from '../shared/index.js';
+} from '@types';
+export type { StorageError } from '../shared';

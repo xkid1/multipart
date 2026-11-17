@@ -22,14 +22,14 @@ import {
   isStorageError,
   resolveContentDisposition,
   stringProp,
-} from '../shared/index.js';
+} from '../shared';
 
 import type {
   AzureBlobContainerClientInterface,
   AzureBlobUploadConfig,
   AzureBlobUploadResponse,
   FileData,
-} from '../../types/index.js';
+} from '@types';
 
 /** Map an Azure SDK `RestError` (or anything else) to a {@link StorageError}. */
 const azureError = (error: unknown, filename?: string): Error => {

@@ -1,4 +1,4 @@
-import type { FileData, ParsedFormData } from '../../types/index.js';
+import type { FileData, ParsedFormData } from '@types';
 
 /** Files and text fields of a parsed form, keyed by field name. */
 export interface SplitFormData {

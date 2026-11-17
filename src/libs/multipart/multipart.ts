@@ -4,9 +4,9 @@ import {
   readFormParts,
   toFieldValue,
   toFileData,
-} from './form-parts.js';
+} from './form-parts';
 
-import type { FileData } from '../../types/index.js';
+import type { FileData } from '@types';
 
 /**
  * Parse a multipart/form-data body into a flat object.

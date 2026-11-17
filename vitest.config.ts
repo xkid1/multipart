@@ -1,6 +1,26 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 
+// Mirror tsconfig.json "paths" (one alias per layer barrel).
+const fromRoot = (file: string) => fileURLToPath(new URL(file, import.meta.url));
+
 export default defineConfig({
+  resolve: {
+    // Exact-match regexes: a plain '@types' key would also capture '@types/*' packages.
+    alias: (
+      [
+        ['@types', './src/types/index.ts'],
+        ['@libs', './src/libs/index.ts'],
+        ['@utils', './src/utils/index.ts'],
+        ['@middleware', './src/middleware/index.ts'],
+        ['@storage', './src/storage/index.ts'],
+      ] as const
+    ).map(([alias, file]) => ({
+      find: new RegExp(`^${alias}$`),
+      replacement: fromRoot(file),
+    })),
+  },
   test: {
     environment: 'node',
     globals: false,

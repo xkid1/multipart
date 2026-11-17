@@ -1,4 +1,4 @@
-import { Logger, MultiPartError, MultiPartErrorCode } from '../../utils/index.js';
+import { Logger, MultiPartError, MultiPartErrorCode } from '@utils';
 
 import {
   createFormRecord,
@@ -6,9 +6,9 @@ import {
   readFormParts,
   toFieldValue,
   toFileData,
-} from './form-parts.js';
+} from './form-parts';
 
-import type { FileData, MiddlewareOptions, ParsedFormData } from '../../types/index.js';
+import type { FileData, MiddlewareOptions, ParsedFormData } from '@types';
 
 const MB = 1024 * 1024;
 

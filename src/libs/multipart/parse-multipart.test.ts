@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseMultipartWithDuplicates } from './parse-multipart.js';
+import { parseMultipartWithDuplicates } from './parse-multipart';
 
-import type { MiddlewareOptions } from '../../types/index.js';
+import type { FileData, MiddlewareOptions } from '@types';
 
 describe('parseMultipartWithDuplicates', () => {
   describe('Single field parsing', () => {
@@ -173,8 +173,8 @@ describe('parseMultipartWithDuplicates', () => {
 
       expect(Array.isArray(result.files)).toBe(true);
       expect(result.files).toHaveLength(2);
-      expect(result.files[0]).toHaveProperty('name', 'file1.txt');
-      expect(result.files[1]).toHaveProperty('name', 'file2.txt');
+      expect((result.files as FileData[])[0]).toHaveProperty('name', 'file1.txt');
+      expect((result.files as FileData[])[1]).toHaveProperty('name', 'file2.txt');
     });
 
     it('handles three files with same name', () => {
@@ -192,9 +192,9 @@ describe('parseMultipartWithDuplicates', () => {
       const result = parseMultipartWithDuplicates(body, boundary);
 
       expect(result.images).toHaveLength(3);
-      expect(result.images[0]).toHaveProperty('name', 'img1.png');
-      expect(result.images[1]).toHaveProperty('name', 'img2.png');
-      expect(result.images[2]).toHaveProperty('name', 'img3.png');
+      expect((result.images as FileData[])[0]).toHaveProperty('name', 'img1.png');
+      expect((result.images as FileData[])[1]).toHaveProperty('name', 'img2.png');
+      expect((result.images as FileData[])[2]).toHaveProperty('name', 'img3.png');
     });
   });
 
@@ -232,8 +232,8 @@ describe('parseMultipartWithDuplicates', () => {
 
       expect(result.tag).toEqual(['foo', 'bar']);
       expect(result.file).toHaveLength(2);
-      expect(result.file[0]).toHaveProperty('name', 'a.txt');
-      expect(result.file[1]).toHaveProperty('name', 'b.txt');
+      expect((result.file as FileData[])[0]).toHaveProperty('name', 'a.txt');
+      expect((result.file as FileData[])[1]).toHaveProperty('name', 'b.txt');
     });
   });
 

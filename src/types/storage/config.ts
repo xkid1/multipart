@@ -214,13 +214,6 @@ export interface AzureBlobUploadResponse {
 }
 
 /**
- * Storage upload response (union type for Local, S3, or Azure)
- * @type StorageUploadResponse
- */
-export type StorageUploadResponse =
-  LocalStorageUploadResponse | S3UploadResponse | AzureBlobUploadResponse;
-
-/**
  * Error response from storage upload
  * @interface StorageUploadError
  */

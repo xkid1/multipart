@@ -1,4 +1,4 @@
-import { getHeaderParam } from './header-params.js';
+import { getHeaderParam } from './header-params';
 
 /**
  * Decode an RFC 5987 extended value such as `UTF-8''na%C3%AFve.txt`.

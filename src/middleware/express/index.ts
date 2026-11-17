@@ -1,11 +1,12 @@
-import { MultiPartError } from '../../utils/index.js';
-import { parseMultipartRequest, toMiddlewareError } from '../shared/parse-request.js';
+import { MultiPartError } from '@utils';
+
+import { parseMultipartRequest, toMiddlewareError } from '../shared/parse-request';
 
 import type {
   ExpressMultipartOptions,
   FileData,
   MultipartRequestProperties,
-} from '../../types/index.js';
+} from '@types';
 import type { NextFunction, Request, Response } from 'express';
 
 /**
@@ -110,4 +111,4 @@ export type {
   FileData,
   MiddlewareError,
   MultipartRequestProperties,
-} from '../../types/index.js';
+} from '@types';

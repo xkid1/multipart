@@ -1,10 +1,10 @@
 import { HttpException } from '@nestjs/common';
 
-import { parseMultipartRequest, toMiddlewareError } from '../shared/parse-request.js';
+import { parseMultipartRequest, toMiddlewareError } from '../shared/parse-request';
 
-import type { RequestLike } from '../shared/read-request-body.js';
-import type { MiddlewareOptions, MultipartRequestProperties } from '../../types/index.js';
+import type { RequestLike } from '../shared/read-request-body';
 import type { NestMiddleware, Type } from '@nestjs/common';
+import type { MiddlewareOptions, MultipartRequestProperties } from '@types';
 
 type NestRequest = RequestLike & MultipartRequestProperties;
 type NestNext = (error?: unknown) => void;
@@ -56,7 +56,9 @@ export class MultipartNestjs implements NestMiddleware {
         }
         next();
       },
-      (error: unknown) => next(toNestException(error)),
+      (error: unknown) => {
+        next(toNestException(error));
+      },
     );
   }
 }
@@ -90,4 +92,4 @@ export type {
   MiddlewareError,
   MiddlewareOptions,
   MultipartRequestProperties,
-} from '../../types/index.js';
+} from '@types';

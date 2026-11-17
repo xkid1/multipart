@@ -5,9 +5,9 @@ import {
   getS3PresignedUrl,
   uploadMultipleToS3,
   uploadToS3,
-} from './s3-uploader.js';
+} from './s3-uploader';
 
-import type { FileData, S3ClientInterface, S3UploadConfig } from '../../types/index.js';
+import type { FileData, S3ClientInterface, S3UploadConfig } from '@types';
 
 vi.mock('@aws-sdk/client-s3', () => ({
   PutObjectCommand: class {

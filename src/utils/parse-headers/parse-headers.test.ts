@@ -7,7 +7,7 @@ import {
   extractName,
   getHeaderParam,
   parseHeaders,
-} from './index.js';
+} from './index';
 
 describe('header utilities', () => {
   describe('parseHeaders', () => {
