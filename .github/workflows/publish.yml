@@ -54,7 +54,7 @@ jobs:
       prerelease: ${{ steps.meta.outputs.prerelease }}
       dist_tag: ${{ steps.meta.outputs.dist_tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
       - uses: ./.github/actions/setup
@@ -112,14 +112,14 @@ jobs:
       DIST_TAG: ${{ needs.verify.outputs.dist_tag }}
     steps:
       # Only .nvmrc is needed here; the package itself is the tested tarball.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
           sparse-checkout: .nvmrc
           sparse-checkout-cone-mode: false
 
       - name: Download tested tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package-tarball
           path: ${{ runner.temp }}/pack
@@ -134,7 +134,7 @@ jobs:
 
       # ---------------------------------------------------------------- npmjs.com
       - name: Setup Node for npmjs.com
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           registry-url: 'https://registry.npmjs.org'
@@ -155,7 +155,7 @@ jobs:
 
       # ---------------------------------------------------------- GitHub Packages
       - name: Setup Node for GitHub Packages
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           registry-url: 'https://npm.pkg.github.com'
